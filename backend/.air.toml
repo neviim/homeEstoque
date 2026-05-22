@@ -1,0 +1,24 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "GOROOT=/home/neviim/go GOPATH=/home/neviim/go /home/neviim/go/bin/go build -o ./tmp/main ./cmd/api"
+  bin = "./tmp/main"
+  full_bin = "./tmp/main"
+  include_ext = ["go"]
+  exclude_dir = ["tmp", "vendor"]
+  delay = 500
+  kill_delay = "200ms"
+  rerun = false
+
+[log]
+  main_only = true
+
+[color]
+  app = "green"
+  build = "yellow"
+  runner = "cyan"
+  watcher = "cyan"
+
+[misc]
+  clean_on_exit = true

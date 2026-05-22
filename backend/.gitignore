@@ -1,0 +1,25 @@
+# ─── Binários e artefatos de build ───────────────────────────────
+bin/
+tmp/
+*.exe
+
+# ─── Banco de dados (contém dados sensíveis dos usuários) ────────
+data/*
+!data/.gitkeep
+*.db
+*.db-shm
+*.db-wal
+
+# ─── Uploads enviados pelos usuários ─────────────────────────────
+uploads/*
+!uploads/.gitkeep
+
+# ─── Segredos e configuração local ───────────────────────────────
+# Copie .env.example → .env e preencha os valores reais
+.env
+.env.local
+.env.*.local
+
+# ─── Cobertura de testes ─────────────────────────────────────────
+*.out
+coverage.html

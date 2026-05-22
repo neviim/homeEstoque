@@ -1,0 +1,26 @@
+# ─── Binários compilados (gerados por build-mcp.sh) ─────────────
+bin/
+
+# ─── Claude Code — config local da máquina (não compartilhar) ────
+.claude/settings.local.json
+
+# ─── Firecrawl — arquivos temporários de scraping ────────────────
+.firecrawl/
+
+# ─── Logs ────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Sistema operacional ─────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+
+# ─── Editores / IDEs ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
