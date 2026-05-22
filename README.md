@@ -102,6 +102,29 @@ cd backend && go build -o bin/api ./cmd/api
 
 Você pode servir o `dist/` por qualquer estático (nginx, Caddy) ou apontar o backend para servi-lo.
 
+## Servidor MCP (Claude Code / Claude Desktop)
+
+Além da API HTTP, o projeto inclui um servidor **MCP** (Model Context Protocol) que permite ao Claude consultar e movimentar itens do estoque por linguagem natural ("onde está minha furadeira?", "crie um item chamado X no Quarto"). Ele compartilha o mesmo SQLite da API via WAL — podem rodar simultaneamente.
+
+```bash
+# 1. Compilar (gera ./bin/homeestoque-mcp)
+./tools/build-mcp.sh
+
+# 2. Registrar no Claude Code
+claude mcp add homeestoque \
+  --scope local \
+  -e DB_PATH=$(pwd)/backend/data/homeestoque.db \
+  -- $(pwd)/bin/homeestoque-mcp
+
+# 3. Reiniciar Claude Code e listar
+/mcp
+# Deve aparecer "homeestoque" com 10 tools
+```
+
+10 ferramentas disponíveis: `find_item_location`, `list_items`, `get_item`, `list_categories`, `list_locations`, `create_item`, `create_category`, `create_location`, `update_item`, `move_item` (sem delete, por segurança).
+
+**Documentação completa:** [docs/mcp/](docs/mcp/) — inclui [servidor.md](docs/mcp/servidor.md) (compilação e configuração), [ferramentas.md](docs/mcp/ferramentas.md) (referência das 10 tools) e [exemplos-claude-code.md](docs/mcp/exemplos-claude-code.md) (12 casos de uso reais).
+
 ## Endpoints principais
 
 | Método | Rota | Permissão |
