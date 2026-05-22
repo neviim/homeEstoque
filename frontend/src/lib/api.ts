@@ -1,4 +1,5 @@
 import axios from "axios";
+import toast from "react-hot-toast";
 
 export const api = axios.create({
   baseURL: "/api",
@@ -14,14 +15,25 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Controle leve para evitar spam de toasts em 403 — um por janela de 2s.
+let last403At = 0;
+
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const status = err.response?.status;
+    if (status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       if (window.location.pathname !== "/login") {
         window.location.href = "/login";
+      }
+    } else if (status === 403) {
+      const now = Date.now();
+      if (now - last403At > 2000) {
+        last403At = now;
+        const msg = err.response?.data?.error || "Acesso negado";
+        toast.error(msg);
       }
     }
     return Promise.reject(err);

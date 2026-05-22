@@ -40,28 +40,30 @@ homeEstoque/
 │   ├── internal/
 │   │   ├── auth/                # geração e validação JWT
 │   │   ├── config/              # variáveis de ambiente (.env)
-│   │   ├── database/            # Open() + migrate() + Seed()
-│   │   ├── handlers/            # handlers HTTP (chi)
+│   │   ├── database/            # Open() + migrate() + Seed() (inclui seed de roles)
+│   │   ├── handlers/            # handlers HTTP (chi) — inclui roles_handler e user_handler
 │   │   ├── locpath/             # construção de caminho hierárquico de local
 │   │   ├── mcptools/            # implementação das 10 tools MCP
-│   │   ├── middleware/          # middleware JWT para chi
-│   │   └── models/              # structs compartilhados (Item, Movement…)
+│   │   ├── middleware/          # JWT + RequirePermission(db, key)
+│   │   ├── models/              # structs compartilhados (Item, Movement…)
+│   │   └── permissions/         # catálogo + service (HasPermission, UserPermissions)
 │   ├── data/homeestoque.db      # arquivo SQLite (gerado automaticamente)
 │   ├── uploads/                 # fotos enviadas
 │   ├── go.mod
 │   └── .env
 ├── frontend/
 │   ├── src/
-│   │   ├── components/          # Layout, Pagination, Modal, PageHeader…
-│   │   ├── hooks/useAuth.tsx    # contexto de autenticação
-│   │   ├── lib/api.ts           # cliente HTTP (fetch + token)
-│   │   ├── pages/               # Items, Movements, Dashboard, Login…
-│   │   └── types/index.ts       # interfaces TypeScript
+│   │   ├── components/          # Layout, Pagination, Modal, PageHeader, ProfileModal
+│   │   ├── hooks/useAuth.tsx    # contexto + hasPermission(key)
+│   │   ├── lib/api.ts           # cliente HTTP (axios + interceptors 401/403)
+│   │   ├── pages/               # Items, Movements, Dashboard, Login, Users, Permissions
+│   │   └── types/index.ts       # interfaces TypeScript (User, Role, Permission)
 │   └── vite.config.ts           # proxy /api → :8080
 ├── bin/
 │   └── homeestoque-mcp          # binário MCP compilado
 ├── tools/
 │   ├── build-mcp.sh             # compila o servidor MCP
+│   ├── reset-password.sh        # redefine senha de usuário direto no DB
 │   └── seed-demo.sh             # popula/limpa dados de demonstração
 └── docs/                        # esta documentação
 ```
@@ -73,22 +75,33 @@ SQLite com WAL mode — permite múltiplos readers e um writer simultâneo, esse
 ### Tabelas
 
 ```sql
-users        -- autenticação; email único; "MCP Assistant" criado pelo seed
-categories   -- hierárquica (parent_id self-ref); icon e color opcionais
-locations    -- hierárquica; type: comodo|movel|caixa|armario|outro
-items        -- inventário principal; code único "EST-XXXXXXXX"; refs a category/location
-item_photos  -- fotos dos itens; CASCADE delete com o item
-movements    -- log de movimentações; from_location → to_location; user_id
+users             -- autenticação; email único; role (FK por nome → roles.name); status; "MCP Assistant" criado pelo seed
+roles             -- perfis customizáveis; name (slug único); is_system=1 protege contra exclusão/renomeação
+role_permissions  -- N:N entre roles e permissions; (role_id, permission) é PK
+categories        -- hierárquica (parent_id self-ref); icon e color opcionais
+locations         -- hierárquica; type: comodo|movel|caixa|armario|outro
+items             -- inventário principal; code único "EST-XXXXXXXX"; refs a category/location
+item_photos       -- fotos dos itens; CASCADE delete com o item
+movements         -- log de movimentações; from_location → to_location; user_id
 ```
 
 ### Índices
 
 ```sql
-idx_items_category   ON items(category_id)
-idx_items_location   ON items(location_id)
-idx_items_name       ON items(name)
-idx_movements_item   ON movements(item_id)
+idx_items_category         ON items(category_id)
+idx_items_location         ON items(location_id)
+idx_items_name             ON items(name)
+idx_movements_item         ON movements(item_id)
+idx_role_permissions_role  ON role_permissions(role_id)
 ```
+
+### Status de usuário
+
+| Valor | Significado |
+|-------|-------------|
+| `active` | Pode fazer login |
+| `pending` | Aguardando aprovação de admin |
+| `inactive` | Desativado; login bloqueado |
 
 ### Condições de item
 
@@ -131,3 +144,45 @@ locpath.LoadLocationMap(db)              // lê toda a tabela locations em memó
 locpath.BuildFullPath(db, id)            // constrói "Garagem > Caixa Ferramentas" para um ID
 locpath.BuildFullPathFromMap(map, id)    // versão batch (usa mapa já carregado)
 ```
+
+## Sistema de permissões (estilo Discord)
+
+Modelo de autorização granular: cada endpoint exige uma **permissão nomeada**. Cada usuário tem um **perfil (role)** que agrupa as permissões concedidas. Admin pode criar/editar/excluir perfis customizados e ativar/desativar permissões via `/sistema/permissoes` na UI.
+
+### Pacote `permissions`
+
+```go
+permissions.Catalog                       // []Permission — fonte da verdade das 15 capacidades
+permissions.Keys()                        // []string — todas as keys (usado no seed do admin)
+permissions.Exists(key)                   // valida key contra o catálogo
+permissions.HasPermission(db, uid, key)   // usado pelo middleware
+permissions.UserPermissions(db, uid)      // []string — todas as perms efetivas do usuário
+permissions.RolePermissions(db, role)     // []string — perms diretas do role
+```
+
+### Middleware
+
+```go
+middleware.RequirePermission(db, "items.create")  // 403 se faltar a perm
+```
+
+Substitui os antigos `RequireWriter` e `RequireAdmin`. Cada rota declara sua permissão específica em `cmd/api/main.go`. **A consulta vai sempre ao DB** — mudanças de permissão valem no próximo request, sem precisar invalidar o JWT.
+
+### Seed idempotente
+
+Em `seed.go::seedRoles()`:
+
+1. Cria `admin` (is_system=1), `user`, `viewer` se ainda não existirem (`INSERT OR IGNORE`).
+2. Sincroniza `admin` com **todas as keys do catálogo** a cada startup — assim novas permissões adicionadas no código são automaticamente concedidas ao admin.
+3. Para `user` e `viewer`: aplica defaults **apenas se o role estiver sem nenhuma permissão** (não sobrescreve configurações customizadas do admin).
+
+### Garantias
+
+| Invariante | Onde é garantida |
+|------------|------------------|
+| Admin sempre tem todas as permissões | Seed (startup) + `roles_handler.UpdatePermissions` (força inclusão) |
+| Admin nunca pode ser excluído | `roles_handler.Delete` (`is_system=1` → 403) |
+| Admin nunca pode ser renomeado | `roles_handler.Update` (campo `name` ignorado se `is_system=1`) |
+| Perfil só pode ser excluído sem usuários | `roles_handler.Delete` (409 se há users atribuídos) |
+| Último admin não pode ser inativado/excluído | `user_handler.UpdateStatus`/`Delete` |
+| `users.role` sempre referencia perfil existente | `user_handler.Create/Update` (`roleExists()`) + transação no rename de role |

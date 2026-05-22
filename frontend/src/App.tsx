@@ -9,6 +9,7 @@ import Categories from "@/pages/Categories";
 import Locations from "@/pages/Locations";
 import Movements from "@/pages/Movements";
 import Users from "@/pages/Users";
+import Permissions from "@/pages/Permissions";
 
 function Protected({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -17,17 +18,10 @@ function Protected({ children }: { children: JSX.Element }) {
   return children;
 }
 
-function AdminOnly({ children }: { children: JSX.Element }) {
-  const { isAdmin, loading } = useAuth();
+function RequirePermission({ perm, fallback = "/", children }: { perm: string; fallback?: string; children: JSX.Element }) {
+  const { hasPermission, loading } = useAuth();
   if (loading) return <div className="p-10">Carregando…</div>;
-  if (!isAdmin) return <Navigate to="/" replace />;
-  return children;
-}
-
-function NotViewer({ children }: { children: JSX.Element }) {
-  const { isViewer, loading } = useAuth();
-  if (loading) return <div className="p-10">Carregando…</div>;
-  if (isViewer) return <Navigate to="/itens" replace />;
+  if (!hasPermission(perm)) return <Navigate to={fallback} replace />;
   return children;
 }
 
@@ -42,20 +36,14 @@ export default function App() {
           </Protected>
         }
       >
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/itens" element={<Items />} />
-        <Route path="/itens/:id" element={<ItemDetail />} />
-        <Route path="/categorias" element={<NotViewer><Categories /></NotViewer>} />
-        <Route path="/locais" element={<NotViewer><Locations /></NotViewer>} />
-        <Route path="/movimentacoes" element={<NotViewer><Movements /></NotViewer>} />
-        <Route
-          path="/sistema/usuarios"
-          element={
-            <AdminOnly>
-              <Users />
-            </AdminOnly>
-          }
-        />
+        <Route path="/" element={<RequirePermission perm="dashboard.view"><Dashboard /></RequirePermission>} />
+        <Route path="/itens" element={<RequirePermission perm="items.view"><Items /></RequirePermission>} />
+        <Route path="/itens/:id" element={<RequirePermission perm="items.view"><ItemDetail /></RequirePermission>} />
+        <Route path="/categorias" element={<RequirePermission perm="categories.view"><Categories /></RequirePermission>} />
+        <Route path="/locais" element={<RequirePermission perm="locations.view"><Locations /></RequirePermission>} />
+        <Route path="/movimentacoes" element={<RequirePermission perm="movements.view"><Movements /></RequirePermission>} />
+        <Route path="/sistema/usuarios" element={<RequirePermission perm="users.manage"><Users /></RequirePermission>} />
+        <Route path="/sistema/permissoes" element={<RequirePermission perm="roles.manage"><Permissions /></RequirePermission>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

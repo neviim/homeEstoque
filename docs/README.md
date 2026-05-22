@@ -6,10 +6,16 @@ Sistema de inventário doméstico com backend Go, frontend React e servidor MCP 
 
 | Documento | Conteúdo |
 |-----------|----------|
-| [Arquitetura](arquitetura.md) | Visão geral, banco de dados, decisões de design |
+| [Arquitetura](arquitetura.md) | Visão geral, banco de dados, sistema de permissões |
 | [Desenvolvimento](desenvolvimento.md) | Setup, hot reload, build, scripts utilitários |
 | [API HTTP](api/) | Referência completa dos endpoints REST com exemplos curl |
 | [Servidor MCP](mcp/) | Configuração e uso das 10 ferramentas MCP |
+
+## Destaques
+
+- **Sistema de permissões granulares (estilo Discord)** — 15 capacidades nomeadas, perfis customizáveis, mudanças aplicadas em tempo real. Veja [Perfis e Permissões](api/permissoes.md).
+- **Gestão de usuários com aprovação** — auto-cadastros entram como `pending` até serem aprovados por um admin. Veja [Usuários](api/usuarios.md).
+- **MCP Server** — Claude pode consultar e modificar o estoque por linguagem natural. Veja [MCP](mcp/).
 
 ## Início rápido
 

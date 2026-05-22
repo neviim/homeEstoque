@@ -16,7 +16,8 @@ const COLORS = [
 ];
 
 export default function Categories() {
-  const { isViewer } = useAuth();
+  const { hasPermission } = useAuth();
+  const canManage = hasPermission("categories.manage");
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
@@ -49,7 +50,7 @@ export default function Categories() {
         title="Categorias"
         subtitle="Organize seus itens por tipo"
         actions={
-          !isViewer && (
+          canManage && (
             <button onClick={onNew} className="btn-primary">
               <Plus className="w-4 h-4" /> Nova categoria
             </button>
@@ -65,7 +66,7 @@ export default function Categories() {
           title="Nenhuma categoria"
           description="Crie categorias para organizar seus itens (ex: Eletrônicos, Cabos, Cozinha)."
           action={
-            !isViewer ? (
+            canManage ? (
               <button className="btn-primary" onClick={onNew}>
                 <Plus className="w-4 h-4" /> Criar categoria
               </button>
@@ -86,7 +87,7 @@ export default function Categories() {
                 <div className="font-semibold text-slate-900 truncate">{c.name}</div>
                 <div className="text-xs text-slate-500">{c.item_count ?? 0} itens</div>
               </div>
-              {!isViewer && (
+              {canManage && (
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
                   <button onClick={() => onEdit(c)} className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded">
                     <Edit3 className="w-4 h-4" />

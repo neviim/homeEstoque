@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/neviim/homeestoque/backend/internal/auth"
+	"github.com/neviim/homeestoque/backend/internal/permissions"
 )
 
 type ctxKey string
@@ -46,34 +47,25 @@ func GetUserID(r *http.Request) int64 {
 	return 0
 }
 
-func RequireWriter(db *sql.DB) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			uid := GetUserID(r)
-			var role string
-			if uid > 0 {
-				_ = db.QueryRow("SELECT role FROM users WHERE id = ?", uid).Scan(&role)
-			}
-			if role == "viewer" {
-				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `{"error":"acesso somente leitura"}`, http.StatusForbidden)
-				return
-			}
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
-func RequireAdmin(db *sql.DB) func(http.Handler) http.Handler {
+// RequirePermission verifica se o usuário autenticado tem a permission `key`.
+// Retorna 401 se não autenticado, 403 se autenticado mas sem permissão.
+// A consulta vai sempre ao banco — mudanças no role passam a valer no próximo request.
+func RequirePermission(db *sql.DB, key string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			uid := GetUserID(r)
 			if uid == 0 {
+				w.Header().Set("Content-Type", "application/json")
 				http.Error(w, `{"error":"sem autenticação"}`, http.StatusUnauthorized)
 				return
 			}
-			var role string
-			if err := db.QueryRow("SELECT role FROM users WHERE id = ?", uid).Scan(&role); err != nil || role != "admin" {
+			ok, err := permissions.HasPermission(db, uid, key)
+			if err != nil {
+				w.Header().Set("Content-Type", "application/json")
+				http.Error(w, `{"error":"erro ao verificar permissão"}`, http.StatusInternalServerError)
+				return
+			}
+			if !ok {
 				w.Header().Set("Content-Type", "application/json")
 				http.Error(w, `{"error":"acesso negado"}`, http.StatusForbidden)
 				return

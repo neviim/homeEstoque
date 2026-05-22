@@ -108,10 +108,26 @@ func migrate(db *sql.DB) error {
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 
+	CREATE TABLE IF NOT EXISTS roles (
+		id          INTEGER PRIMARY KEY AUTOINCREMENT,
+		name        TEXT NOT NULL UNIQUE,
+		label       TEXT NOT NULL,
+		description TEXT,
+		is_system   INTEGER NOT NULL DEFAULT 0,
+		created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+	);
+
+	CREATE TABLE IF NOT EXISTS role_permissions (
+		role_id    INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+		permission TEXT NOT NULL,
+		PRIMARY KEY (role_id, permission)
+	);
+
 	CREATE INDEX IF NOT EXISTS idx_items_category ON items(category_id);
 	CREATE INDEX IF NOT EXISTS idx_items_location ON items(location_id);
 	CREATE INDEX IF NOT EXISTS idx_items_name ON items(name);
 	CREATE INDEX IF NOT EXISTS idx_movements_item ON movements(item_id);
+	CREATE INDEX IF NOT EXISTS idx_role_permissions_role ON role_permissions(role_id);
 	`
 	if _, err := db.Exec(schema); err != nil {
 		return err

@@ -11,11 +11,19 @@ Authorization: Bearer <token>
 
 O token é obtido em `POST /api/auth/login`.
 
+## Modelo de autorização
+
+Cada endpoint é protegido por uma **permissão nomeada** (ex: `items.create`, `users.manage`). O usuário tem acesso se seu **perfil (role)** inclui essa permissão. A verificação consulta o banco em **todo request** — alterações de permissão valem imediatamente, sem precisar relogar.
+
+Veja [Perfis e Permissões](permissoes.md) para o catálogo completo das 15 permissões e a API de gerenciamento.
+
 ## Endpoints
 
 | Módulo | Documento |
 |--------|-----------|
 | Autenticação | [autenticacao.md](autenticacao.md) |
+| Usuários | [usuarios.md](usuarios.md) |
+| Perfis e Permissões | [permissoes.md](permissoes.md) |
 | Categorias | [categorias.md](categorias.md) |
 | Localizações | [localizacoes.md](localizacoes.md) |
 | Itens | [itens.md](itens.md) |
@@ -24,32 +32,31 @@ O token é obtido em `POST /api/auth/login`.
 
 ## Tabela de rotas
 
-| Método | Rota | Auth | Descrição |
-|--------|------|------|-----------|
+| Método | Rota | Permissão | Descrição |
+|--------|------|-----------|-----------|
 | GET | `/health` | — | Saúde da API |
-| POST | `/api/auth/register` | — | Cadastrar usuário |
+| POST | `/api/auth/register` | — | Auto-cadastro (entra como `pending`) |
 | POST | `/api/auth/login` | — | Login → token JWT |
-| GET | `/api/auth/me` | ✓ | Dados do usuário logado |
 | GET | `/api/items/{id}/qrcode` | — | QR Code do item (PNG) |
-| GET | `/api/categories` | ✓ | Listar categorias |
-| POST | `/api/categories` | ✓ | Criar categoria |
-| PUT | `/api/categories/{id}` | ✓ | Atualizar categoria |
-| DELETE | `/api/categories/{id}` | ✓ | Remover categoria |
-| GET | `/api/locations` | ✓ | Listar localizações |
-| POST | `/api/locations` | ✓ | Criar localização |
-| PUT | `/api/locations/{id}` | ✓ | Atualizar localização |
-| DELETE | `/api/locations/{id}` | ✓ | Remover localização |
-| GET | `/api/items` | ✓ | Listar itens (paginado) |
-| POST | `/api/items` | ✓ | Criar item |
-| GET | `/api/items/{id}` | ✓ | Detalhe do item |
-| PUT | `/api/items/{id}` | ✓ | Atualizar item |
-| DELETE | `/api/items/{id}` | ✓ | Remover item |
-| GET | `/api/items/{id}/movements` | ✓ | Histórico do item |
-| POST | `/api/items/{id}/photos` | ✓ | Upload de foto |
-| DELETE | `/api/items/{id}/photos/{photoId}` | ✓ | Remover foto |
-| GET | `/api/movements` | ✓ | Todas as movimentações (paginado) |
-| GET | `/api/dashboard` | ✓ | Estatísticas gerais |
-| GET | `/api/export/csv` | ✓ | Exportar CSV |
+| GET | `/api/auth/me` | autenticado | Dados do usuário logado + permissions |
+| PUT | `/api/auth/profile` | autenticado | Atualizar próprio nome |
+| PUT | `/api/auth/password` | autenticado | Trocar a própria senha |
+| GET | `/api/permissions` | autenticado | Catálogo de permissões |
+| GET | `/api/roles` | autenticado | Listar perfis e suas permissões |
+| GET | `/api/dashboard` | `dashboard.view` | Estatísticas gerais |
+| GET | `/api/categories` | `categories.view` | Listar categorias |
+| POST/PUT/DELETE | `/api/categories` | `categories.manage` | Gerenciar categorias |
+| GET | `/api/locations` | `locations.view` | Listar localizações |
+| POST/PUT/DELETE | `/api/locations` | `locations.manage` | Gerenciar localizações |
+| GET | `/api/items`, `/api/items/{id}`, `/api/items/{id}/movements` | `items.view` | Listar / detalhe / histórico |
+| POST | `/api/items` | `items.create` | Criar item |
+| PUT | `/api/items/{id}` | `items.update` | Atualizar item |
+| DELETE | `/api/items/{id}` | `items.delete` | Remover item |
+| POST/DELETE | `/api/items/{id}/photos/...` | `items.upload_photo` | Anexar/remover foto |
+| GET | `/api/movements`, `/api/movements/users` | `movements.view` | Histórico geral |
+| GET | `/api/export/csv` | `export.csv` | Exportar CSV |
+| GET/POST/PUT/DELETE | `/api/users/...` | `users.manage` | Gerenciar usuários |
+| POST/PUT/DELETE | `/api/roles/...` | `roles.manage` | Gerenciar perfis |
 
 ## Configurar token no shell
 
@@ -64,3 +71,15 @@ TOKEN=$(curl -s -X POST http://localhost:8080/api/auth/login \
 curl -s http://localhost:8080/api/items \
   -H "Authorization: Bearer $TOKEN" | jq
 ```
+
+## Códigos de resposta padrão
+
+| Código | Significado |
+|--------|-------------|
+| 200 / 201 | OK / Criado |
+| 400 | Body inválido, validação falhou |
+| 401 | Sem token / token inválido |
+| 403 | Sem permissão para essa ação (perfil não inclui a permissão necessária) |
+| 404 | Recurso não encontrado |
+| 409 | Conflito (email duplicado, último admin, perfil em uso) |
+| 500 | Erro interno |

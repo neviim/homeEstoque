@@ -23,7 +23,8 @@ function typeIcon(t: string) {
 }
 
 export default function Locations() {
-  const { isViewer } = useAuth();
+  const { hasPermission } = useAuth();
+  const canManage = hasPermission("locations.manage");
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Location | null>(null);
@@ -56,7 +57,7 @@ export default function Locations() {
         title="Locais"
         subtitle="Cômodos, móveis, caixas — onde guardar seus itens"
         actions={
-          !isViewer && (
+          canManage && (
             <button onClick={onNew} className="btn-primary">
               <Plus className="w-4 h-4" /> Novo local
             </button>
@@ -72,7 +73,7 @@ export default function Locations() {
           title="Nenhum local cadastrado"
           description="Crie locais como 'Sala', 'Bancada do escritório', 'Caixa 1'."
           action={
-            !isViewer ? (
+            canManage ? (
               <button className="btn-primary" onClick={onNew}>
                 <Plus className="w-4 h-4" /> Criar local
               </button>
@@ -94,7 +95,7 @@ export default function Locations() {
                     {l.type} · {l.item_count ?? 0} itens
                   </div>
                 </div>
-                {!isViewer && (
+                {canManage && (
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
                     <button onClick={() => onEdit(l)} className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded">
                       <Edit3 className="w-4 h-4" />

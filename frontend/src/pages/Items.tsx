@@ -15,7 +15,10 @@ import { useAuth } from "@/hooks/useAuth";
 const PAGE_SIZE = 12;
 
 export default function Items() {
-  const { isViewer } = useAuth();
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission("items.create");
+  const canUpdate = hasPermission("items.update");
+  const canDelete = hasPermission("items.delete");
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState<string>("");
@@ -87,7 +90,7 @@ export default function Items() {
         title="Itens"
         subtitle={`${total} ${total === 1 ? "item" : "itens"} no estoque`}
         actions={
-          !isViewer && (
+          canCreate && (
             <button onClick={onNew} className="btn-primary">
               <Plus className="w-4 h-4" /> Novo item
             </button>
@@ -133,7 +136,7 @@ export default function Items() {
           title="Nenhum item encontrado"
           description="Comece cadastrando os itens que você quer controlar em casa."
           action={
-            !isViewer ? (
+            canCreate ? (
               <button className="btn-primary" onClick={onNew}>
                 <Plus className="w-4 h-4" /> Cadastrar primeiro item
               </button>
@@ -191,25 +194,25 @@ export default function Items() {
                   >
                     <QrCode className="w-4 h-4" />
                   </button>
-                  {!isViewer && (
-                    <>
-                      <button
-                        onClick={() => onEdit(item)}
-                        title="Editar"
-                        className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(`Excluir "${item.name}"?`)) delMut.mutate(item.id);
-                        }}
-                        title="Excluir"
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </>
+                  {canUpdate && (
+                    <button
+                      onClick={() => onEdit(item)}
+                      title="Editar"
+                      className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      onClick={() => {
+                        if (confirm(`Excluir "${item.name}"?`)) delMut.mutate(item.id);
+                      }}
+                      title="Excluir"
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   )}
                 </div>
               </div>

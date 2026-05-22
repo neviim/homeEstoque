@@ -13,7 +13,9 @@ Sistema completo de **controle de estoque doméstico** com backend em Go e front
 - **Busca** por nome, código, descrição, marca, modelo
 - Filtros por categoria e local
 - **Exportação CSV** do inventário completo
-- **Autenticação JWT** multi-usuário (família)
+- **Autenticação JWT** multi-usuário com aprovação de cadastros pendentes
+- **Sistema de permissões granulares** estilo Discord — perfis customizáveis com 15 capacidades editáveis (UI em `/sistema/permissoes`)
+- **Servidor MCP** — Claude pode consultar e movimentar itens por linguagem natural
 - Dashboard com estatísticas e valor patrimonial estimado
 
 ## Stack
@@ -31,26 +33,31 @@ A comunicação é **100% via API REST** — backend e frontend podem rodar/sere
 
 ```
 homeEstoque/
-├── backend/                  API Go
-│   ├── cmd/api/main.go      Entrypoint
+├── backend/                  API Go + MCP Server
+│   ├── cmd/
+│   │   ├── api/main.go      Entrypoint HTTP
+│   │   └── mcp/main.go      Entrypoint MCP (stdio)
 │   ├── internal/
 │   │   ├── auth/            JWT + bcrypt
 │   │   ├── config/          ENV loader
-│   │   ├── database/        SQLite + migrations + seed
-│   │   ├── handlers/        REST endpoints
-│   │   ├── middleware/      Auth middleware
-│   │   └── models/          DTOs
+│   │   ├── database/        SQLite + migrations + seed (incl. roles)
+│   │   ├── handlers/        REST endpoints (incl. users e roles)
+│   │   ├── locpath/         Caminho hierárquico de localização
+│   │   ├── mcptools/        Implementação das 10 tools MCP
+│   │   ├── middleware/      JWT + RequirePermission(db, key)
+│   │   ├── models/          DTOs
+│   │   └── permissions/     Catálogo + service de permissões
 │   ├── data/                Banco SQLite (gerado)
 │   ├── uploads/             Fotos (gerado)
 │   ├── go.mod
 │   └── .env.example
 └── frontend/                 SPA React
     ├── src/
-    │   ├── components/      UI reutilizável + Layout
-    │   ├── pages/           Dashboard, Items, Categorias, Locais, Movimentações, Login
-    │   ├── hooks/           useAuth
-    │   ├── lib/             api axios, utils
-    │   └── types/           Tipos TypeScript
+    │   ├── components/      UI reutilizável + Layout + ProfileModal
+    │   ├── pages/           Dashboard, Items, Categorias, Locais, Movimentações, Login, Users, Permissions
+    │   ├── hooks/           useAuth + hasPermission
+    │   ├── lib/             api axios (com interceptors 401/403), utils
+    │   └── types/           Tipos TypeScript (User, Role, Permission)
     ├── vite.config.ts
     └── package.json
 ```
@@ -97,27 +104,27 @@ Você pode servir o `dist/` por qualquer estático (nginx, Caddy) ou apontar o b
 
 ## Endpoints principais
 
-| Método | Rota                                  | Descrição |
-|--------|---------------------------------------|-----------|
-| POST   | `/api/auth/register`                  | Cria usuário e devolve JWT |
-| POST   | `/api/auth/login`                     | Login → JWT |
-| GET    | `/api/auth/me`                        | Usuário atual |
-| GET    | `/api/dashboard`                      | Estatísticas |
-| GET    | `/api/items?search=&category_id=&location_id=` | Lista itens com filtros |
-| POST   | `/api/items`                          | Cria item |
-| GET    | `/api/items/{id}`                     | Detalhes + fotos |
-| PUT    | `/api/items/{id}`                     | Atualiza (registra movimentação se mudou local) |
-| DELETE | `/api/items/{id}`                     | Exclui (incluindo fotos físicas) |
-| POST   | `/api/items/{id}/photos`              | Upload foto (multipart, campo `photo`) |
-| DELETE | `/api/items/{id}/photos/{photoId}`    | Remove foto |
-| GET    | `/api/items/{id}/qrcode`              | PNG QR Code |
-| GET    | `/api/items/{id}/movements`           | Histórico do item |
-| GET    | `/api/movements`                      | Últimas 100 movimentações |
-| GET    | `/api/categories` `POST` `PUT` `DELETE` | CRUD categorias |
-| GET    | `/api/locations` `POST` `PUT` `DELETE`  | CRUD locais (hierárquicos) |
-| GET    | `/api/export/csv`                     | Download CSV (UTF-8 BOM, separador `;`) |
+| Método | Rota | Permissão |
+|--------|------|-----------|
+| POST | `/api/auth/register` | público — entra como `pending` (exceto primeiro user) |
+| POST | `/api/auth/login` | público |
+| GET | `/api/auth/me`, `/api/permissions`, `/api/roles` | autenticado |
+| PUT | `/api/auth/profile`, `/api/auth/password` | autenticado |
+| GET | `/api/dashboard` | `dashboard.view` |
+| GET | `/api/items` (lista, detalhe, movimentos) | `items.view` |
+| POST/PUT/DELETE | `/api/items/{id}` | `items.create` / `items.update` / `items.delete` |
+| POST/DELETE | `/api/items/{id}/photos/...` | `items.upload_photo` |
+| GET | `/api/items/{id}/qrcode` | público (sem auth) |
+| GET | `/api/categories`, `/api/locations` | respectivo `.view` |
+| POST/PUT/DELETE | categorias e locais | respectivo `.manage` |
+| GET | `/api/movements` | `movements.view` |
+| GET | `/api/export/csv` | `export.csv` |
+| GET/POST/PUT/DELETE | `/api/users/...` | `users.manage` |
+| GET/POST/PUT/DELETE | `/api/roles/...` | `roles.manage` |
 
-Todos os endpoints (exceto `/auth/*` e `/health`) requerem header:
+Documentação detalhada com exemplos curl em [docs/api/](docs/api/).
+
+Todos os endpoints protegidos requerem header:
 ```
 Authorization: Bearer <token>
 ```

@@ -7,6 +7,7 @@ import (
 
 	"github.com/neviim/homeestoque/backend/internal/auth"
 	"github.com/neviim/homeestoque/backend/internal/middleware"
+	"github.com/neviim/homeestoque/backend/internal/permissions"
 )
 
 type AuthHandler struct {
@@ -87,9 +88,10 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	var createdAt string
 	_ = h.DB.QueryRow("SELECT created_at FROM users WHERE id = ?", id).Scan(&createdAt)
+	perms, _ := permissions.UserPermissions(h.DB, id)
 	writeJSON(w, http.StatusCreated, authResponse{
 		Token: token,
-		User:  map[string]interface{}{"id": id, "name": req.Name, "email": req.Email, "created_at": createdAt, "role": role, "status": status},
+		User:  map[string]interface{}{"id": id, "name": req.Name, "email": req.Email, "created_at": createdAt, "role": role, "status": status, "permissions": perms},
 	})
 }
 
@@ -130,9 +132,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "erro ao gerar token")
 		return
 	}
+	perms, _ := permissions.UserPermissions(h.DB, id)
 	writeJSON(w, http.StatusOK, authResponse{
 		Token: token,
-		User:  map[string]interface{}{"id": id, "name": name, "email": email, "created_at": createdAt, "role": role, "status": status},
+		User:  map[string]interface{}{"id": id, "name": name, "email": email, "created_at": createdAt, "role": role, "status": status, "permissions": perms},
 	})
 }
 
@@ -149,7 +152,8 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "usuário não encontrado")
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]interface{}{"id": id, "name": name, "email": email, "created_at": createdAt, "role": role, "status": status})
+	perms, _ := permissions.UserPermissions(h.DB, id)
+	writeJSON(w, http.StatusOK, map[string]interface{}{"id": id, "name": name, "email": email, "created_at": createdAt, "role": role, "status": status, "permissions": perms})
 }
 
 type updateProfileRequest struct {
@@ -179,8 +183,9 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	var email, createdAt, role, status string
 	_ = h.DB.QueryRow("SELECT email, created_at, role, status FROM users WHERE id = ?", uid).Scan(&email, &createdAt, &role, &status)
+	perms, _ := permissions.UserPermissions(h.DB, uid)
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"id": uid, "name": req.Name, "email": email, "created_at": createdAt, "role": role, "status": status,
+		"id": uid, "name": req.Name, "email": email, "created_at": createdAt, "role": role, "status": status, "permissions": perms,
 	})
 }
 

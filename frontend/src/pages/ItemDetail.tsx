@@ -11,7 +11,10 @@ import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function ItemDetail() {
-  const { isViewer } = useAuth();
+  const { hasPermission } = useAuth();
+  const canUpdate = hasPermission("items.update");
+  const canDelete = hasPermission("items.delete");
+  const canPhoto = hasPermission("items.upload_photo");
   const { id } = useParams();
   const nav = useNavigate();
   const qc = useQueryClient();
@@ -89,20 +92,20 @@ export default function ItemDetail() {
           <button onClick={() => setQrOpen(true)} className="btn-secondary">
             <QrCode className="w-4 h-4" /> QR Code
           </button>
-          {!isViewer && (
-            <>
-              <button onClick={() => setEditOpen(true)} className="btn-secondary">
-                <Edit3 className="w-4 h-4" /> Editar
-              </button>
-              <button
-                onClick={() => {
-                  if (confirm(`Excluir "${item.name}"?`)) delItem.mutate();
-                }}
-                className="btn-danger"
-              >
-                <Trash2 className="w-4 h-4" /> Excluir
-              </button>
-            </>
+          {canUpdate && (
+            <button onClick={() => setEditOpen(true)} className="btn-secondary">
+              <Edit3 className="w-4 h-4" /> Editar
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={() => {
+                if (confirm(`Excluir "${item.name}"?`)) delItem.mutate();
+              }}
+              className="btn-danger"
+            >
+              <Trash2 className="w-4 h-4" /> Excluir
+            </button>
           )}
         </div>
       </div>
@@ -142,7 +145,7 @@ export default function ItemDetail() {
           <div className="card p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-slate-900">Fotos</h2>
-              {!isViewer && (
+              {canPhoto && (
                 <>
                   <button className="btn-secondary text-xs py-1.5" onClick={() => fileRef.current?.click()}>
                     <Upload className="w-3.5 h-3.5" /> Adicionar foto
@@ -166,7 +169,7 @@ export default function ItemDetail() {
                 {item.photos.map((p) => (
                   <div key={p.id} className="relative group aspect-square overflow-hidden rounded-lg border border-slate-200">
                     <img src={p.url} alt="" className="w-full h-full object-cover" />
-                    {!isViewer && (
+                    {canPhoto && (
                       <button
                         onClick={() => delPhoto.mutate(p.id)}
                         className="absolute top-1.5 right-1.5 p-1 bg-white/90 rounded-full text-slate-700 hover:text-red-600 opacity-0 group-hover:opacity-100 transition"

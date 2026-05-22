@@ -8,7 +8,7 @@ import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function Dashboard() {
-  const { isAdmin } = useAuth();
+  const { hasPermission } = useAuth();
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard"],
     queryFn: async () => (await api.get<DashboardStats>("/dashboard")).data,
@@ -52,7 +52,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {isAdmin && data.total_value > 0 && (
+      {hasPermission("dashboard.view_value") && data.total_value > 0 && (
         <div className="card p-6 mb-8 bg-gradient-to-br from-brand-50 to-indigo-50 border-brand-100">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center text-brand-600">

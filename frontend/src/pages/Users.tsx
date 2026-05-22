@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   UserPlus,
@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import toast from "react-hot-toast";
-import type { User } from "@/types";
+import type { User, Role } from "@/types";
 
 type StatusFilter = "all" | "active" | "pending" | "inactive";
 
@@ -34,11 +34,21 @@ const STATUS_LABELS: Record<string, string> = {
   inactive: "Inativo",
 };
 
-const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
-  user: "Usuário",
-  viewer: "Visualizador",
-};
+// Paleta de cores estável: hash do nome → uma das opções
+const ROLE_PALETTES = [
+  { bg: "bg-blue-50", text: "text-blue-700" },
+  { bg: "bg-emerald-50", text: "text-emerald-700" },
+  { bg: "bg-amber-50", text: "text-amber-700" },
+  { bg: "bg-rose-50", text: "text-rose-700" },
+  { bg: "bg-cyan-50", text: "text-cyan-700" },
+  { bg: "bg-fuchsia-50", text: "text-fuchsia-700" },
+];
+
+function paletteFor(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return ROLE_PALETTES[h % ROLE_PALETTES.length];
+}
 
 function StatusBadge({ status }: { status?: string }) {
   if (status === "active")
@@ -60,22 +70,30 @@ function StatusBadge({ status }: { status?: string }) {
   );
 }
 
-function RoleBadge({ role }: { role?: string }) {
+function RoleBadge({ role, label }: { role?: string; label?: string }) {
+  if (!role) return null;
   if (role === "admin")
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-brand-50 text-brand-700">
-        <ShieldCheck className="w-3 h-3" /> Admin
+        <ShieldCheck className="w-3 h-3" /> {label || "Admin"}
       </span>
     );
   if (role === "viewer")
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
-        <Eye className="w-3 h-3" /> Visualizador
+        <Eye className="w-3 h-3" /> {label || "Visualizador"}
       </span>
     );
+  if (role === "user")
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+        <UserIcon className="w-3 h-3" /> {label || "Usuário"}
+      </span>
+    );
+  const pal = paletteFor(role);
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-      <UserIcon className="w-3 h-3" /> Usuário
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${pal.bg} ${pal.text}`}>
+      <ShieldCheck className="w-3 h-3" /> {label || role}
     </span>
   );
 }
@@ -90,15 +108,16 @@ interface UserFormData {
 
 interface UserModalProps {
   user?: User;
+  roles: Role[];
   onClose: () => void;
   onSave: (data: UserFormData) => Promise<void>;
 }
 
-function UserModal({ user, onClose, onSave }: UserModalProps) {
+function UserModal({ user, roles, onClose, onSave }: UserModalProps) {
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState(user?.role || "user");
+  const [role, setRole] = useState(user?.role || (roles.find((r) => r.name === "user")?.name ?? roles[0]?.name ?? "user"));
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -161,9 +180,11 @@ function UserModal({ user, onClose, onSave }: UserModalProps) {
           <div>
             <label className="label">Perfil</label>
             <select className="input" value={role} onChange={(e) => setRole(e.target.value)}>
-              <option value="user">Usuário</option>
-              <option value="viewer">Visualizador (somente leitura)</option>
-              <option value="admin">Administrador</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.name}>
+                  {r.label}
+                </option>
+              ))}
             </select>
           </div>
           <div className="flex gap-3 pt-2">
@@ -253,6 +274,14 @@ export default function Users() {
   const [resetUser, setResetUser] = useState<User | null>(null);
 
   const { data: users = [], isLoading } = useQuery({ queryKey: ["users"], queryFn: fetchUsers });
+  const { data: roles = [] } = useQuery({
+    queryKey: ["roles"],
+    queryFn: async () => (await api.get<{ roles: Role[] }>("/roles")).data.roles,
+  });
+  const roleLabelOf = useMemo(() => {
+    const m = new Map(roles.map((r) => [r.name, r.label]));
+    return (name?: string) => (name ? m.get(name) || name : undefined);
+  }, [roles]);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["users"] });
 
@@ -368,7 +397,7 @@ export default function Users() {
                     </div>
                   </td>
                   <td className="px-5 py-3.5">
-                    <RoleBadge role={user.role} />
+                    <RoleBadge role={user.role} label={roleLabelOf(user.role)} />
                   </td>
                   <td className="px-5 py-3.5">
                     <StatusBadge status={user.status} />
@@ -445,10 +474,10 @@ export default function Users() {
       </div>
 
       {showAdd && (
-        <UserModal onClose={() => setShowAdd(false)} onSave={handleCreate} />
+        <UserModal roles={roles} onClose={() => setShowAdd(false)} onSave={handleCreate} />
       )}
       {editUser && (
-        <UserModal user={editUser} onClose={() => setEditUser(null)} onSave={handleEdit} />
+        <UserModal roles={roles} user={editUser} onClose={() => setEditUser(null)} onSave={handleEdit} />
       )}
       {resetUser && (
         <ResetPwdModal user={resetUser} onClose={() => setResetUser(null)} />

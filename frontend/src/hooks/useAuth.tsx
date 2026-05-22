@@ -7,10 +7,13 @@ interface AuthCtx {
   loading: boolean;
   isAdmin: boolean;
   isViewer: boolean;
+  permissions: string[];
+  hasPermission: (key: string) => boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<"active" | "pending">;
   logout: () => void;
   updateUser: (updated: User) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -28,6 +31,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         /* ignore */
       }
+      // Atualiza permissions em background — se mudou no servidor enquanto o user estava deslogado/JWT antigo
+      api.get<User>("/auth/me")
+        .then(({ data }) => {
+          localStorage.setItem("user", JSON.stringify(data));
+          setUser(data);
+        })
+        .catch(() => {/* ignore */})
+        .finally(() => setLoading(false));
+      return;
     }
     setLoading(false);
   }, []);
@@ -62,10 +74,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(updated);
   }
 
-  const isAdmin = user?.role === "admin";
-  const isViewer = user?.role === "viewer";
+  async function refreshUser() {
+    try {
+      const { data } = await api.get<User>("/auth/me");
+      localStorage.setItem("user", JSON.stringify(data));
+      setUser(data);
+    } catch {
+      /* ignore */
+    }
+  }
 
-  return <Ctx.Provider value={{ user, loading, isAdmin, isViewer, login, register, logout, updateUser }}>{children}</Ctx.Provider>;
+  const permissions = user?.permissions ?? [];
+  const hasPermission = (key: string) => permissions.includes(key);
+  const isAdmin = hasPermission("roles.manage") && hasPermission("users.manage");
+  const isViewer = user?.role === "viewer"; // mantido apenas para o badge visual
+
+  return (
+    <Ctx.Provider value={{ user, loading, isAdmin, isViewer, permissions, hasPermission, login, register, logout, updateUser, refreshUser }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useAuth() {

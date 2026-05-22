@@ -55,6 +55,7 @@ func main() {
 	itemH := &handlers.ItemHandler{DB: db, UploadDir: cfg.UploadDir}
 	exH := &handlers.ExtraHandler{DB: db}
 	userH := &handlers.UserHandler{DB: db}
+	roleH := &handlers.RolesHandler{DB: db}
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -72,47 +73,58 @@ func main() {
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.Auth(cfg.JWTSecret))
 
-			// Acessível a todos os perfis (inclusive viewer)
+			// Rotas de perfil próprio + catálogos para a UI — acessíveis a qualquer logado
 			r.Get("/auth/me", authH.Me)
 			r.Put("/auth/profile", authH.UpdateProfile)
 			r.Put("/auth/password", authH.ChangePassword)
+			r.Get("/permissions", roleH.ListCatalog)
+			r.Get("/roles", roleH.List)
 
-			r.Get("/categories", catH.List)
-			r.Get("/locations", locH.List)
-			r.Get("/items", itemH.List)
-			r.Get("/items/{id}", itemH.Get)
-			r.Get("/items/{id}/movements", itemH.Movements)
-			r.Get("/movements", exH.AllMovements)
-			r.Get("/movements/users", exH.MovementUsers)
-			r.Get("/dashboard", exH.Dashboard)
-			r.Get("/export/csv", exH.ExportCSV)
+			// Dashboard
+			r.With(middleware.RequirePermission(db, "dashboard.view")).Get("/dashboard", exH.Dashboard)
 
-			// Operações de escrita — viewer bloqueado
-			r.Group(func(r chi.Router) {
-				r.Use(middleware.RequireWriter(db))
-				r.Post("/categories", catH.Create)
-				r.Put("/categories/{id}", catH.Update)
-				r.Delete("/categories/{id}", catH.Delete)
-				r.Post("/locations", locH.Create)
-				r.Put("/locations/{id}", locH.Update)
-				r.Delete("/locations/{id}", locH.Delete)
-				r.Post("/items", itemH.Create)
-				r.Put("/items/{id}", itemH.Update)
-				r.Delete("/items/{id}", itemH.Delete)
-				r.Post("/items/{id}/photos", itemH.UploadPhoto)
-				r.Delete("/items/{id}/photos/{photoId}", itemH.DeletePhoto)
-			})
+			// Itens
+			r.With(middleware.RequirePermission(db, "items.view")).Get("/items", itemH.List)
+			r.With(middleware.RequirePermission(db, "items.view")).Get("/items/{id}", itemH.Get)
+			r.With(middleware.RequirePermission(db, "items.view")).Get("/items/{id}/movements", itemH.Movements)
+			r.With(middleware.RequirePermission(db, "items.create")).Post("/items", itemH.Create)
+			r.With(middleware.RequirePermission(db, "items.update")).Put("/items/{id}", itemH.Update)
+			r.With(middleware.RequirePermission(db, "items.delete")).Delete("/items/{id}", itemH.Delete)
+			r.With(middleware.RequirePermission(db, "items.upload_photo")).Post("/items/{id}/photos", itemH.UploadPhoto)
+			r.With(middleware.RequirePermission(db, "items.upload_photo")).Delete("/items/{id}/photos/{photoId}", itemH.DeletePhoto)
 
-			// Somente admin
-			r.Group(func(r chi.Router) {
-				r.Use(middleware.RequireAdmin(db))
-				r.Get("/users", userH.List)
-				r.Post("/users", userH.Create)
-				r.Put("/users/{id}", userH.Update)
-				r.Put("/users/{id}/status", userH.UpdateStatus)
-				r.Put("/users/{id}/password", userH.ResetPassword)
-				r.Delete("/users/{id}", userH.Delete)
-			})
+			// Categorias
+			r.With(middleware.RequirePermission(db, "categories.view")).Get("/categories", catH.List)
+			r.With(middleware.RequirePermission(db, "categories.manage")).Post("/categories", catH.Create)
+			r.With(middleware.RequirePermission(db, "categories.manage")).Put("/categories/{id}", catH.Update)
+			r.With(middleware.RequirePermission(db, "categories.manage")).Delete("/categories/{id}", catH.Delete)
+
+			// Locais
+			r.With(middleware.RequirePermission(db, "locations.view")).Get("/locations", locH.List)
+			r.With(middleware.RequirePermission(db, "locations.manage")).Post("/locations", locH.Create)
+			r.With(middleware.RequirePermission(db, "locations.manage")).Put("/locations/{id}", locH.Update)
+			r.With(middleware.RequirePermission(db, "locations.manage")).Delete("/locations/{id}", locH.Delete)
+
+			// Movimentações
+			r.With(middleware.RequirePermission(db, "movements.view")).Get("/movements", exH.AllMovements)
+			r.With(middleware.RequirePermission(db, "movements.view")).Get("/movements/users", exH.MovementUsers)
+
+			// Exportação
+			r.With(middleware.RequirePermission(db, "export.csv")).Get("/export/csv", exH.ExportCSV)
+
+			// Gestão de usuários
+			r.With(middleware.RequirePermission(db, "users.manage")).Get("/users", userH.List)
+			r.With(middleware.RequirePermission(db, "users.manage")).Post("/users", userH.Create)
+			r.With(middleware.RequirePermission(db, "users.manage")).Put("/users/{id}", userH.Update)
+			r.With(middleware.RequirePermission(db, "users.manage")).Put("/users/{id}/status", userH.UpdateStatus)
+			r.With(middleware.RequirePermission(db, "users.manage")).Put("/users/{id}/password", userH.ResetPassword)
+			r.With(middleware.RequirePermission(db, "users.manage")).Delete("/users/{id}", userH.Delete)
+
+			// Gestão de perfis (roles & permissions)
+			r.With(middleware.RequirePermission(db, "roles.manage")).Post("/roles", roleH.Create)
+			r.With(middleware.RequirePermission(db, "roles.manage")).Put("/roles/{id}", roleH.Update)
+			r.With(middleware.RequirePermission(db, "roles.manage")).Delete("/roles/{id}", roleH.Delete)
+			r.With(middleware.RequirePermission(db, "roles.manage")).Put("/roles/{id}/permissions", roleH.UpdatePermissions)
 		})
 	})
 

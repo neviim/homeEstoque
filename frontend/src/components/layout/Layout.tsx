@@ -11,26 +11,37 @@ import {
   Download,
   Settings,
   Users,
+  Shield,
   ChevronDown,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import ProfileModal from "@/components/ui/ProfileModal";
 
-const navItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true,  viewerHidden: false },
-  { to: "/itens", label: "Itens", icon: Package,                     viewerHidden: false },
-  { to: "/categorias", label: "Categorias", icon: Folder,            viewerHidden: true  },
-  { to: "/locais", label: "Locais", icon: MapPin,                    viewerHidden: true  },
-  { to: "/movimentacoes", label: "Movimentações", icon: ArrowLeftRight, viewerHidden: true },
+interface NavItem {
+  to: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  end?: boolean;
+  requires: string; // permission key
+}
+
+const navItems: NavItem[] = [
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true, requires: "dashboard.view" },
+  { to: "/itens", label: "Itens", icon: Package, requires: "items.view" },
+  { to: "/categorias", label: "Categorias", icon: Folder, requires: "categories.view" },
+  { to: "/locais", label: "Locais", icon: MapPin, requires: "locations.view" },
+  { to: "/movimentacoes", label: "Movimentações", icon: ArrowLeftRight, requires: "movements.view" },
 ];
 
 export default function Layout() {
-  const { user, logout, isAdmin, isViewer } = useAuth();
+  const { user, logout, isViewer, hasPermission } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
   const location = useLocation();
   const sistemaOpen = location.pathname.startsWith("/sistema");
   const [sistemaExpanded, setSistemaExpanded] = useState(sistemaOpen);
+
+  const canSeeSistema = hasPermission("users.manage") || hasPermission("roles.manage");
 
   return (
     <div className="min-h-screen flex">
@@ -46,7 +57,7 @@ export default function Layout() {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.filter((item) => !(isViewer && item.viewerHidden)).map((item) => (
+          {navItems.filter((item) => hasPermission(item.requires)).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -65,7 +76,7 @@ export default function Layout() {
             </NavLink>
           ))}
 
-          {!isViewer && (
+          {hasPermission("export.csv") && (
             <a
               href="/api/export/csv"
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition"
@@ -89,7 +100,7 @@ export default function Layout() {
             </a>
           )}
 
-          {isAdmin && (
+          {canSeeSistema && (
             <div className="pt-2 mt-2 border-t border-slate-100">
               <button
                 onClick={() => setSistemaExpanded((v) => !v)}
@@ -109,20 +120,38 @@ export default function Layout() {
 
               {sistemaExpanded && (
                 <div className="ml-3 mt-0.5 pl-4 border-l border-slate-200 space-y-0.5">
-                  <NavLink
-                    to="/sistema/usuarios"
-                    className={({ isActive }) =>
-                      cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition",
-                        isActive
-                          ? "bg-brand-50 text-brand-700"
-                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                      )
-                    }
-                  >
-                    <Users className="w-[16px] h-[16px]" />
-                    Usuários
-                  </NavLink>
+                  {hasPermission("users.manage") && (
+                    <NavLink
+                      to="/sistema/usuarios"
+                      className={({ isActive }) =>
+                        cn(
+                          "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition",
+                          isActive
+                            ? "bg-brand-50 text-brand-700"
+                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        )
+                      }
+                    >
+                      <Users className="w-[16px] h-[16px]" />
+                      Usuários
+                    </NavLink>
+                  )}
+                  {hasPermission("roles.manage") && (
+                    <NavLink
+                      to="/sistema/permissoes"
+                      className={({ isActive }) =>
+                        cn(
+                          "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition",
+                          isActive
+                            ? "bg-brand-50 text-brand-700"
+                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        )
+                      }
+                    >
+                      <Shield className="w-[16px] h-[16px]" />
+                      Permissões
+                    </NavLink>
+                  )}
                 </div>
               )}
             </div>

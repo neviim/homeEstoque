@@ -15,6 +15,13 @@ type UserHandler struct {
 	DB *sql.DB
 }
 
+// roleExists indica se o nome de role passado existe na tabela roles.
+func (h *UserHandler) roleExists(name string) bool {
+	var n int
+	_ = h.DB.QueryRow(`SELECT COUNT(*) FROM roles WHERE name = ?`, name).Scan(&n)
+	return n > 0
+}
+
 type userRow struct {
 	ID        int64  `json:"id"`
 	Name      string `json:"name"`
@@ -63,8 +70,8 @@ func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if req.Role == "" {
 		req.Role = "user"
 	}
-	if req.Role != "admin" && req.Role != "user" && req.Role != "viewer" {
-		writeError(w, http.StatusBadRequest, "role inválido")
+	if !h.roleExists(req.Role) {
+		writeError(w, http.StatusBadRequest, "perfil inexistente")
 		return
 	}
 	if req.Name == "" || req.Email == "" || len(req.Password) < 6 {
@@ -120,8 +127,8 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.Role == "" {
 		req.Role = "user"
 	}
-	if req.Role != "admin" && req.Role != "user" && req.Role != "viewer" {
-		writeError(w, http.StatusBadRequest, "role inválido")
+	if !h.roleExists(req.Role) {
+		writeError(w, http.StatusBadRequest, "perfil inexistente")
 		return
 	}
 	if req.Name == "" {
@@ -129,8 +136,9 @@ func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Impede que o último admin seja rebaixado
-	if req.Role == "user" && targetID == callerID {
+	// Impede que o último admin seja rebaixado (caller só pode tirar seu próprio admin
+	// se houver outro admin ativo)
+	if req.Role != "admin" && targetID == callerID {
 		var adminCount int
 		_ = h.DB.QueryRow("SELECT COUNT(*) FROM users WHERE role = 'admin' AND status = 'active'").Scan(&adminCount)
 		if adminCount <= 1 {

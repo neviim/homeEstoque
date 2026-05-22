@@ -4,6 +4,25 @@ export interface User {
   email: string;
   role?: string;
   status?: string;
+  permissions?: string[];
+  created_at?: string;
+}
+
+export interface Permission {
+  key: string;
+  label: string;
+  description: string;
+  category: string;
+}
+
+export interface Role {
+  id: number;
+  name: string;
+  label: string;
+  description: string;
+  is_system: boolean;
+  user_count: number;
+  permissions: string[];
   created_at?: string;
 }
 
