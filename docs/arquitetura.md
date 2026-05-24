@@ -39,15 +39,17 @@ homeEstoque/
 │   │   └── mcp/main.go          # entry point: MCP server stdio
 │   ├── internal/
 │   │   ├── auth/                # geração e validação JWT
-│   │   ├── config/              # variáveis de ambiente (.env)
+│   │   ├── backup/              # Create, Restore, Verify, Scheduler, Manager
+│   │   ├── config/              # variáveis de ambiente (.env) + BACKUP_DIR
 │   │   ├── database/            # Open() + migrate() + Seed() (inclui seed de roles)
-│   │   ├── handlers/            # handlers HTTP (chi) — inclui roles_handler e user_handler
+│   │   ├── handlers/            # handlers HTTP (chi) — inclui backup_handler
 │   │   ├── locpath/             # construção de caminho hierárquico de local
 │   │   ├── mcptools/            # implementação das 10 tools MCP
-│   │   ├── middleware/          # JWT + RequirePermission(db, key)
+│   │   ├── middleware/          # JWT + RequirePermission + MaintenanceGate
 │   │   ├── models/              # structs compartilhados (Item, Movement…)
 │   │   └── permissions/         # catálogo + service (HasPermission, UserPermissions)
 │   ├── data/homeestoque.db      # arquivo SQLite (gerado automaticamente)
+│   ├── data/backups/            # backups .tar.gz (BACKUP_DIR, default ./data/backups)
 │   ├── uploads/                 # fotos enviadas
 │   ├── go.mod
 │   └── .env
@@ -56,7 +58,7 @@ homeEstoque/
 │   │   ├── components/          # Layout, Pagination, Modal, PageHeader, ProfileModal
 │   │   ├── hooks/useAuth.tsx    # contexto + hasPermission(key)
 │   │   ├── lib/api.ts           # cliente HTTP (axios + interceptors 401/403)
-│   │   ├── pages/               # Items, Movements, Dashboard, Login, Users, Permissions
+│   │   ├── pages/               # Items, Movements, Dashboard, Login, Users, Permissions, Backup
 │   │   └── types/index.ts       # interfaces TypeScript (User, Role, Permission)
 │   └── vite.config.ts           # proxy /api → :8080
 ├── bin/
@@ -83,6 +85,8 @@ locations         -- hierárquica; type: comodo|movel|caixa|armario|outro
 items             -- inventário principal; code único "EST-XXXXXXXX"; refs a category/location
 item_photos       -- fotos dos itens; CASCADE delete com o item
 movements         -- log de movimentações; from_location → to_location; user_id
+backups           -- registro de cada arquivo .tar.gz; sha256, status (ok/corrupted/missing/orphan/unverified)
+backup_schedule   -- singleton (id=1); frequência/horário/retenção do agendamento automático
 ```
 
 ### Índices
@@ -152,7 +156,7 @@ Modelo de autorização granular: cada endpoint exige uma **permissão nomeada**
 ### Pacote `permissions`
 
 ```go
-permissions.Catalog                       // []Permission — fonte da verdade das 15 capacidades
+permissions.Catalog                       // []Permission — fonte da verdade das 19 capacidades
 permissions.Keys()                        // []string — todas as keys (usado no seed do admin)
 permissions.Exists(key)                   // valida key contra o catálogo
 permissions.HasPermission(db, uid, key)   // usado pelo middleware
@@ -186,3 +190,52 @@ Em `seed.go::seedRoles()`:
 | Perfil só pode ser excluído sem usuários | `roles_handler.Delete` (409 se há users atribuídos) |
 | Último admin não pode ser inativado/excluído | `user_handler.UpdateStatus`/`Delete` |
 | `users.role` sempre referencia perfil existente | `user_handler.Create/Update` (`roleExists()`) + transação no rename de role |
+
+## Módulo de Backup (`internal/backup`)
+
+### Visão geral
+
+O módulo produz arquivos `.tar.gz` contendo o DB SQLite (snapshot via `VACUUM INTO`) e a pasta `uploads/`. Cada arquivo é registrado na tabela `backups` com sha256, tamanho e status. O admin pode criar backups manuais, baixar, verificar integridade, restaurar e configurar agendamento automático pela UI em **Sistema → Backup**.
+
+### Componentes
+
+| Arquivo | Responsabilidade |
+|---------|------------------|
+| `backup.go` | `Manager` struct (ponto central); `Create(ctx, kind)` — snapshot + tar.gz + sha256 + INSERT; `List`, `GetByID`, `Delete`, `Verify`, `PrepareRestore` |
+| `restore.go` | `Restore(ctx, id, token)` — valida token, cria snapshot de segurança, ativa maintenance mode, fecha DB, extrai arquivos, chama `RestartFunc` |
+| `scheduler.go` | `StartScheduler` / `StopScheduler` / `Reload`; cron `robfig/cron/v3`; `UpdateSchedule` persiste e recarrega a quente; poda automática por `retention_count` |
+
+### Snapshot consistente com `VACUUM INTO`
+
+`modernc.org/sqlite` (pure-Go) não expõe `sqlite3_backup_init`. `VACUUM INTO 'path'` é uma única SQL statement que produz um snapshot sem os arquivos WAL sidecar, bloqueando escritas apenas brevemente.
+
+### Restore e reinicialização
+
+Após extrair o arquivo, o handler chama uma `RestartFunc` injetada (`os.Exit(0)` com goroutine delayed). Em desenvolvimento, Air detecta a saída e reinicia o processo; em produção, systemd ou Docker faz o mesmo. Isso evita a complexidade de swapping de `*sql.DB` em runtime.
+
+### Maintenance mode
+
+`middleware.MaintenanceGate` lê um `atomic.Bool` exposto pelo `Manager`. Quando ativo (durante restore), todas as rotas retornam `503 Service Unavailable`, exceto os prefixos autorizados (`/api/backups/`). Isso impede requests ao DB enquanto os arquivos estão sendo substituídos.
+
+### Permissões de backup
+
+| Chave | Concedida a (seed) | Operações |
+|-------|-------------------|-----------|
+| `backup.create` | admin | Criar, listar, verificar, excluir |
+| `backup.restore` | admin | Preparar e executar restore |
+| `backup.download` | admin | Download do `.tar.gz` |
+| `backup.schedule` | admin | Ler e atualizar agendamento |
+
+### Rotas HTTP
+
+| Método | Rota | Permissão |
+|--------|------|-----------|
+| `GET` | `/api/backups` | `backup.create` |
+| `POST` | `/api/backups` | `backup.create` |
+| `POST` | `/api/backups/{id}/verify` | `backup.create` |
+| `GET` | `/api/backups/{id}/download` | `backup.download` |
+| `POST` | `/api/backups/{id}/restore/prepare` | `backup.restore` |
+| `POST` | `/api/backups/{id}/restore` | `backup.restore` |
+| `DELETE` | `/api/backups/{id}` | `backup.create` |
+| `GET` | `/api/backup/schedule` | `backup.schedule` |
+| `PUT` | `/api/backup/schedule` | `backup.schedule` |

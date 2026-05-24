@@ -12,6 +12,7 @@ type Config struct {
 	DBPath      string
 	JWTSecret   string
 	UploadDir   string
+	BackupDir   string
 	CORSOrigins []string
 }
 
@@ -23,6 +24,7 @@ func Load() *Config {
 		DBPath:    getEnv("DB_PATH", "./data/homeestoque.db"),
 		JWTSecret: getEnv("JWT_SECRET", "dev-secret-change-me"),
 		UploadDir: getEnv("UPLOAD_DIR", "./uploads"),
+		BackupDir: getEnv("BACKUP_DIR", "./data/backups"),
 	}
 
 	origins := getEnv("CORS_ORIGINS", "http://localhost:5173")

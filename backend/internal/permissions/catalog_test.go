@@ -7,9 +7,10 @@ import (
 )
 
 func TestCatalog_HasExpectedSize(t *testing.T) {
-	// Hoje são 15 capacidades. Quando adicionar nova, atualizar este número
-	// é parte do contrato — sinaliza que precisa documentar/seedar.
-	assert.Len(t, Catalog, 15)
+	// Hoje são 19 capacidades (15 originais + 4 do módulo de backup).
+	// Quando adicionar nova, atualizar este número é parte do contrato —
+	// sinaliza que precisa documentar/seedar.
+	assert.Len(t, Catalog, 19)
 }
 
 func TestCatalog_AllKeysAreUnique(t *testing.T) {

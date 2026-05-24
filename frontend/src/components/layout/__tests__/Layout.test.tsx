@@ -63,8 +63,10 @@ describe("Layout — menu filtrado por permissão", () => {
     expect(screen.queryByText("Exportar CSV")).not.toBeInTheDocument();
   });
 
-  it("Exportar CSV visível com a permissão", async () => {
+  it("Exportar CSV visível dentro de Sistema com a permissão", async () => {
     await renderLayout(["items.view", "export.csv"]);
+    // Está dentro do menu Sistema (colapsado por default) — expandir.
+    await userEvent.click(screen.getByText("Sistema"));
     expect(screen.getByText("Exportar CSV")).toBeInTheDocument();
   });
 });

@@ -115,10 +115,10 @@ export default function ProfileModal({ open, onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative bg-[#f2f3f5] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-slide-up">
+      <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-2xl overflow-hidden animate-slide-up">
 
         {/* Banner */}
-        <div className={`h-24 bg-gradient-to-br ${pal.banner}`} />
+        <div className={`h-28 bg-gradient-to-br ${pal.banner}`} />
 
         {/* Fechar */}
         <button
@@ -128,53 +128,49 @@ export default function ProfileModal({ open, onClose }: Props) {
           <X className="w-4 h-4" />
         </button>
 
-        {/* Avatar + info */}
-        <div className="bg-white mx-3 -mt-4 rounded-xl shadow-sm px-5 pt-0 pb-5">
-          {/* Avatar sobreposição */}
-          <div className="flex items-end gap-4 -mt-8 mb-4">
+        {/* Cabeçalho: avatar + identidade */}
+        <div className="px-6 pb-5 border-b border-slate-100">
+          <div className="flex items-end gap-4 -mt-10 mb-4">
             <div
-              className={`w-20 h-20 rounded-full bg-gradient-to-br ${pal.avatar} ring-4 ring-white flex items-center justify-center text-white text-3xl font-bold shadow-lg shrink-0`}
+              className={`w-20 h-20 rounded-full bg-gradient-to-br ${pal.avatar} ring-4 ring-white flex items-center justify-center text-white text-3xl font-bold shadow-md shrink-0`}
             >
               {initial}
             </div>
           </div>
 
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 leading-tight">{user.name}</h2>
-            <p className="text-sm text-slate-500 mt-0.5">{user.email}</p>
-            {user.created_at && (
-              <p className="text-xs text-slate-400 mt-1.5 flex items-center gap-1.5">
-                <Calendar className="w-3 h-3" />
-                Membro desde {formatDate(user.created_at)}
-              </p>
-            )}
-          </div>
+          <h2 className="text-xl font-bold text-slate-900 leading-tight">{user.name}</h2>
+          <p className="text-sm text-slate-500 mt-0.5">{user.email}</p>
+          {user.created_at && (
+            <p className="text-xs text-slate-400 mt-1.5 flex items-center gap-1.5">
+              <Calendar className="w-3 h-3" />
+              Membro desde {formatDate(user.created_at)}
+            </p>
+          )}
         </div>
 
-        {/* Painel de edição */}
-        <div className="bg-white mx-3 mt-2 mb-3 rounded-xl shadow-sm overflow-hidden">
-          {/* Tabs */}
-          <div className="flex border-b border-slate-100 px-2 pt-2 gap-1">
-            {(["perfil", "seguranca"] as Tab[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-t-lg transition border-b-2 ${
-                  tab === t
-                    ? "text-brand-700 border-brand-600 bg-brand-50/60"
-                    : "text-slate-500 border-transparent hover:text-slate-800 hover:bg-slate-50"
-                }`}
-              >
-                {t === "perfil" ? (
-                  <><User className="w-3.5 h-3.5" /> Perfil</>
-                ) : (
-                  <><ShieldCheck className="w-3.5 h-3.5" /> Segurança</>
-                )}
-              </button>
-            ))}
-          </div>
+        {/* Tabs */}
+        <div className="flex border-b border-slate-100 px-4 gap-1">
+          {(["perfil", "seguranca"] as Tab[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition border-b-2 -mb-px ${
+                tab === t
+                  ? "text-brand-700 border-brand-600"
+                  : "text-slate-500 border-transparent hover:text-slate-800"
+              }`}
+            >
+              {t === "perfil" ? (
+                <><User className="w-3.5 h-3.5" /> Perfil</>
+              ) : (
+                <><ShieldCheck className="w-3.5 h-3.5" /> Segurança</>
+              )}
+            </button>
+          ))}
+        </div>
 
-          <div className="p-5">
+        {/* Conteúdo da tab */}
+        <div className="px-6 py-6 min-h-[300px]">
             {/* ───── TAB PERFIL ───── */}
             {tab === "perfil" && (
               <form onSubmit={handleSaveProfile} className="space-y-4">
@@ -311,7 +307,6 @@ export default function ProfileModal({ open, onClose }: Props) {
               </form>
             )}
           </div>
-        </div>
 
       </div>
     </div>

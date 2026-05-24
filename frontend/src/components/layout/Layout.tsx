@@ -13,6 +13,7 @@ import {
   Users,
   Shield,
   ChevronDown,
+  HardDrive,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -41,7 +42,8 @@ export default function Layout() {
   const sistemaOpen = location.pathname.startsWith("/sistema");
   const [sistemaExpanded, setSistemaExpanded] = useState(sistemaOpen);
 
-  const canSeeSistema = hasPermission("users.manage") || hasPermission("roles.manage");
+  const canSeeSistema =
+    hasPermission("users.manage") || hasPermission("roles.manage") || hasPermission("export.csv") || hasPermission("backup.create");
 
   return (
     <div className="min-h-screen flex">
@@ -75,30 +77,6 @@ export default function Layout() {
               {item.label}
             </NavLink>
           ))}
-
-          {hasPermission("export.csv") && (
-            <a
-              href="/api/export/csv"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition"
-              onClick={(e) => {
-                e.preventDefault();
-                const token = localStorage.getItem("token");
-                fetch("/api/export/csv", { headers: { Authorization: `Bearer ${token}` } })
-                  .then((r) => r.blob())
-                  .then((blob) => {
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = "estoque.csv";
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  });
-              }}
-            >
-              <Download className="w-[18px] h-[18px]" />
-              Exportar CSV
-            </a>
-          )}
 
           {canSeeSistema && (
             <div className="pt-2 mt-2 border-t border-slate-100">
@@ -151,6 +129,45 @@ export default function Layout() {
                       <Shield className="w-[16px] h-[16px]" />
                       Permissões
                     </NavLink>
+                  )}
+                  {hasPermission("backup.create") && (
+                    <NavLink
+                      to="/sistema/backup"
+                      className={({ isActive }) =>
+                        cn(
+                          "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition",
+                          isActive
+                            ? "bg-brand-50 text-brand-700"
+                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        )
+                      }
+                    >
+                      <HardDrive className="w-[16px] h-[16px]" />
+                      Backup
+                    </NavLink>
+                  )}
+                  {hasPermission("export.csv") && (
+                    <a
+                      href="/api/export/csv"
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const token = localStorage.getItem("token");
+                        fetch("/api/export/csv", { headers: { Authorization: `Bearer ${token}` } })
+                          .then((r) => r.blob())
+                          .then((blob) => {
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = "estoque.csv";
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          });
+                      }}
+                    >
+                      <Download className="w-[16px] h-[16px]" />
+                      Exportar CSV
+                    </a>
                   )}
                 </div>
               )}

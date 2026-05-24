@@ -34,6 +34,11 @@ var Catalog = []Permission{
 
 	{"users.manage", "Gerenciar Usuários", "Criar, editar e excluir usuários", "Sistema"},
 	{"roles.manage", "Gerenciar Perfis", "Configurar perfis e suas permissões", "Sistema"},
+
+	{"backup.create", "Gerenciar Backups", "Criar, listar, verificar e excluir backups", "Sistema"},
+	{"backup.restore", "Restaurar Backup", "Restaurar o sistema a partir de um backup", "Sistema"},
+	{"backup.download", "Baixar Backup", "Baixar arquivos de backup para a máquina local", "Sistema"},
+	{"backup.schedule", "Agendar Backups", "Configurar o agendamento automático de backups", "Sistema"},
 }
 
 // Keys retorna todas as keys do catálogo (útil para o seed do admin).

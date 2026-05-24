@@ -1,36 +1,71 @@
 # Testes
 
-O HomeEstoque tem **256 testes/cenários automatizados** cobrindo backend Go, frontend React e fluxos E2E. Esta página explica como rodar, onde estão organizados e o que cada camada cobre.
+O HomeEstoque tem **~350 testes/cenários automatizados** cobrindo backend Go, frontend React e fluxos E2E. Esta página explica como rodar, onde estão organizados e o que cada camada cobre.
 
 ## Como rodar
 
 ### Atalho — script `./test.sh` na raiz
 
+Script único na raiz do projeto que orquestra as três camadas de teste. Pode ser invocado de qualquer diretório (usa `$(dirname "$0")` internamente), mas o exemplo canônico é a partir da raiz.
+
+#### Seleção de camada (posicional)
+
 ```bash
-./test.sh              # roda tudo (backend + frontend + E2E)
-./test.sh --fast       # pula E2E (~2x mais rápido)
-./test.sh --quiet      # só uma linha por camada; detalhe completo só se falhar
+./test.sh              # all — backend + frontend + E2E (default)
 ./test.sh backend      # só backend Go
 ./test.sh frontend     # só Vitest
-./test.sh e2e          # só Playwright (compila MCP se necessário)
-./test.sh --coverage   # com relatórios de cobertura
+./test.sh e2e          # só Playwright (compila o binário MCP se necessário)
 ```
 
-Resumo colorido no final mostra `PASS`/`FAIL` e tempo por camada. Código de saída 0 = tudo passou; 1 = alguma camada falhou (todas as camadas rodam mesmo se uma falhar, pra você ver tudo de uma vez).
+#### Flags (combináveis entre si e com a camada)
 
-**Modo `--quiet`** (ou `-q`): ideal para uso em hooks e CI local. Cada camada vira uma linha `Nome ... ✓  N testes` ou `Nome ... ✗`. Quando alguma falhar, o output completo da camada quebrada é impresso. O resumo final mostra o **total de testes** somado entre as 3 camadas. Combine com `--fast` para feedback de ~30s sem E2E.
+| Flag | Efeito |
+|------|--------|
+| `--fast` | Pula E2E. Só faz sentido em `all` — feedback ~30s em vez de ~2-3min. |
+| `--quiet`, `-q` | Output só do resumo. Em caso de falha, imprime o log completo **só da camada que quebrou**. |
+| `--coverage` | Backend gera `backend/coverage.out`; frontend roda `npm run test:coverage` (HTML em `frontend/coverage/`). |
+| `--help`, `-h` | Imprime o cabeçalho de uso e sai. |
 
-Exemplo de output:
+Exemplos combinados:
+
+```bash
+./test.sh --fast --quiet         # pre-commit hook ideal: ~30s, uma linha por camada
+./test.sh backend --coverage     # só backend, com cobertura
+./test.sh e2e -q                 # só E2E em modo silencioso
+```
+
+#### Códigos de saída
+
+- `0` — todas as camadas executadas passaram.
+- `1` — pelo menos uma camada falhou. **As camadas seguintes continuam rodando** mesmo após uma falha, pra você ver tudo de uma vez.
+- `2` — argumento desconhecido.
+- `3` — pré-requisito ausente (`go` em `/home/neviim/go/bin/go` ou `npm` em `/home/neviim/.nvm/versions/node/v24.13.0/bin/npm`).
+
+#### Auto-install (idempotente)
+
+O script instala dependências faltantes sozinho — útil em clone fresco ou CI:
+
+- `frontend/node_modules` ausente → roda `npm ci` em `frontend/`.
+- `tests/e2e/node_modules` ausente → roda `npm ci` em `tests/e2e/`.
+- `tests/e2e/.playwright-cache` ausente → roda `npx playwright install chromium` (cache local, não global).
+- `bin/homeestoque-mcp` ausente → executa `tools/build-mcp.sh` antes do E2E.
+
+#### Modo `--quiet` em detalhes
+
+Ideal para hooks (`pre-push`, `pre-commit`) e CI local. Cada camada vira uma linha `Nome ... ✓  N testes` ou `Nome ... ✗`. Quando alguma falhar, o output capturado em arquivo temp é despejado na tela só para a camada quebrada. O resumo final mostra o **total de testes** somado.
+
+Exemplo de output com `./test.sh --fast --quiet`:
+
 ```
 HomeEstoque — suíte de testes
 Modo: all +fast +quiet
-  Backend Go ... ✓  172 testes
-  Frontend Vitest ... ✓  84 testes
+  Backend Go ... ✓  ~230 testes
+  Frontend Vitest ... ✓  92 testes
 
 ━━━ Resumo ━━━
-  Backend Go                PASS   172 testes  (2s)
-  Frontend Vitest           PASS    84 testes  (29s)
-  Total: 256 testes
+  Backend Go                PASS   ~230 testes  (2s)
+  Frontend Vitest           PASS    92 testes  (30s)
+  Total: ~322 testes
 
 Todos os testes passaram ✓
 ```
@@ -95,10 +130,12 @@ homeEstoque/
 │   ├── database/
 │   │   ├── migrate_test.go                  ← integration
 │   │   └── seed_test.go                     ← integration
+│   ├── backup/*_test.go                     ← unit/integration (backup, restore, scheduler)
 │   ├── handlers/*_test.go                   ← integration (chi + httptest + SQLite)
 │   ├── mcptools/*_test.go                   ← integration (chamadas diretas das tools)
 │   └── testutil/                            ← helpers compartilhados
 │       ├── db.go                            (NewTestDB, NewTestServer, TokenFor)
+│       ├── backup.go                        (NewBackupEnv, BackupEnv.NewServer)
 │       ├── fixtures.go                      (CreateUser, CreateItem, CreateCategory…)
 │       └── http.go                          (Request, DecodeJSON)
 ├── frontend/src/
@@ -126,7 +163,7 @@ homeEstoque/
 
 ## Cobertura por camada
 
-### Backend Go — 207 testes
+### Backend Go — ~230 testes
 
 | Pacote | Testes | Cobertura |
 |--------|--------|-----------|
@@ -134,6 +171,7 @@ homeEstoque/
 | `internal/permissions` | 13 | **85.7%** |
 | `internal/middleware` | 12 | **100%** |
 | `internal/database` (migrate + seed) | 12 | **85.0%** |
+| `internal/backup` (backup + restore + scheduler) | ~15 | ~82% |
 | `internal/handlers/auth_handler` | 20 | 84–86% |
 | `internal/handlers/user_handler` | 14 | 65–77% |
 | `internal/handlers/roles_handler` | 13 | 53–100% |
@@ -141,11 +179,12 @@ homeEstoque/
 | `internal/handlers/category_handler` | 6 | ~78% |
 | `internal/handlers/location_handler` | 6 | ~76% |
 | `internal/handlers/extra_handler` | 9 | ~85% |
+| `internal/handlers/backup_handler` | 8 | ~80% |
 | `internal/mcptools` (items + categories + locations) | 26 | 79–93% |
 
-**Cobertura média do backend: 76%**
+**Cobertura média do backend: 78%**
 
-### Frontend — 84 testes
+### Frontend — 92 testes
 
 | Arquivo | Testes | Cobertura |
 |---------|--------|-----------|
@@ -161,6 +200,7 @@ homeEstoque/
 | `pages/Users.tsx` | 5 | 49% |
 | `pages/Dashboard.tsx` | 3 | 69% |
 | `pages/Categories.tsx` | 3 | 28% |
+| `pages/Backup.tsx` | 8 | ~70% |
 
 ### E2E (Playwright) — 12 cenários
 
@@ -254,6 +294,7 @@ Workflow `.github/workflows/ci.yml` roda em todo PR e push pra `main`. Três job
 |---|--------|----------|---------|
 | 1 | 1 | `middleware.go` usava `http.Error()` que forçava `Content-Type: text/plain` — quebrava o toast 403 do frontend | Substituído por `writeJSONError` helper |
 | 2 | 4 | `testutil.CreateItem` gerava code baseado em name → UNIQUE constraint fail em loops | Trocado para UUID (igual ao handler real) |
+| 3 | 5 | `backup.Create` usava timestamp com precisão de segundo → UNIQUE constraint em `backups.filename` quando dois backups criados no mesmo segundo | Adicionado sufixo de microssegundos (`-XXXXXX`) ao nome do arquivo |
 
 ## Side effects positivos
 

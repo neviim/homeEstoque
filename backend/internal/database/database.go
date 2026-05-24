@@ -123,6 +123,31 @@ func migrate(db *sql.DB) error {
 		PRIMARY KEY (role_id, permission)
 	);
 
+	CREATE TABLE IF NOT EXISTS backups (
+		id          INTEGER PRIMARY KEY AUTOINCREMENT,
+		filename    TEXT NOT NULL UNIQUE,
+		size_bytes  INTEGER NOT NULL,
+		sha256      TEXT NOT NULL,
+		created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		type        TEXT NOT NULL CHECK(type IN ('manual','auto')),
+		status      TEXT NOT NULL DEFAULT 'ok' CHECK(status IN ('ok','corrupted','missing','orphan','unverified')),
+		verified_at DATETIME,
+		notes       TEXT
+	);
+
+	CREATE TABLE IF NOT EXISTS backup_schedule (
+		id              INTEGER PRIMARY KEY CHECK(id = 1),
+		enabled         INTEGER NOT NULL DEFAULT 0,
+		frequency       TEXT NOT NULL DEFAULT 'daily' CHECK(frequency IN ('daily','weekly')),
+		weekday         INTEGER,
+		time_of_day     TEXT NOT NULL DEFAULT '03:00',
+		retention_count INTEGER NOT NULL DEFAULT 7,
+		last_run_at     DATETIME,
+		next_run_at     DATETIME,
+		updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	INSERT OR IGNORE INTO backup_schedule (id) VALUES (1);
+
 	CREATE INDEX IF NOT EXISTS idx_items_category ON items(category_id);
 	CREATE INDEX IF NOT EXISTS idx_items_location ON items(location_id);
 	CREATE INDEX IF NOT EXISTS idx_items_name ON items(name);

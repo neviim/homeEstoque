@@ -12,6 +12,7 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
+	"github.com/neviim/homeestoque/backend/internal/backup"
 	"github.com/neviim/homeestoque/backend/internal/config"
 	"github.com/neviim/homeestoque/backend/internal/handlers"
 	"github.com/neviim/homeestoque/backend/internal/middleware"
@@ -21,6 +22,10 @@ import (
 // desabilitar o middleware Logger para evitar ruído no `go test -v`.
 type Options struct {
 	DisableLogger bool
+	// BackupManager habilita as rotas /api/backups e /api/backup/schedule.
+	// Quando nil, essas rotas não são registradas (útil em testes que não
+	// exercitam o módulo de backup).
+	BackupManager *backup.Manager
 }
 
 // BuildRouter monta o stack completo de middlewares e rotas.
@@ -33,6 +38,15 @@ func BuildRouter(db *sql.DB, cfg *config.Config, opts Options) http.Handler {
 	}
 	r.Use(chimw.Recoverer)
 	r.Use(chimw.Timeout(60 * time.Second))
+
+	// Maintenance gate: durante restore, bloqueia toda API exceto /health e a
+	// rota de restore em si. Só ativa quando BackupManager está presente.
+	if opts.BackupManager != nil {
+		r.Use(middleware.MaintenanceGate(
+			opts.BackupManager.IsInMaintenance,
+			[]string{"/api/backups/"},
+		))
+	}
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   cfg.CORSOrigins,
@@ -110,6 +124,19 @@ func BuildRouter(db *sql.DB, cfg *config.Config, opts Options) http.Handler {
 			r.With(middleware.RequirePermission(db, "roles.manage")).Put("/roles/{id}", roleH.Update)
 			r.With(middleware.RequirePermission(db, "roles.manage")).Delete("/roles/{id}", roleH.Delete)
 			r.With(middleware.RequirePermission(db, "roles.manage")).Put("/roles/{id}/permissions", roleH.UpdatePermissions)
+
+			if opts.BackupManager != nil {
+				bkH := &handlers.BackupHandler{Manager: opts.BackupManager}
+				r.With(middleware.RequirePermission(db, "backup.create")).Get("/backups", bkH.List)
+				r.With(middleware.RequirePermission(db, "backup.create")).Post("/backups", bkH.Create)
+				r.With(middleware.RequirePermission(db, "backup.create")).Post("/backups/{id}/verify", bkH.Verify)
+				r.With(middleware.RequirePermission(db, "backup.create")).Delete("/backups/{id}", bkH.Delete)
+				r.With(middleware.RequirePermission(db, "backup.download")).Get("/backups/{id}/download", bkH.Download)
+				r.With(middleware.RequirePermission(db, "backup.restore")).Post("/backups/{id}/restore/prepare", bkH.PrepareRestore)
+				r.With(middleware.RequirePermission(db, "backup.restore")).Post("/backups/{id}/restore", bkH.Restore)
+				r.With(middleware.RequirePermission(db, "backup.schedule")).Get("/backup/schedule", bkH.GetSchedule)
+				r.With(middleware.RequirePermission(db, "backup.schedule")).Put("/backup/schedule", bkH.UpdateSchedule)
+			}
 		})
 	})
 

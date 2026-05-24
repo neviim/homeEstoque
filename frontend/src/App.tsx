@@ -10,6 +10,7 @@ import Locations from "@/pages/Locations";
 import Movements from "@/pages/Movements";
 import Users from "@/pages/Users";
 import Permissions from "@/pages/Permissions";
+import BackupPage from "@/pages/Backup";
 
 function Protected({ children }: { children: JSX.Element }) {
   const { user, loading } = useAuth();
@@ -44,6 +45,7 @@ export default function App() {
         <Route path="/movimentacoes" element={<RequirePermission perm="movements.view"><Movements /></RequirePermission>} />
         <Route path="/sistema/usuarios" element={<RequirePermission perm="users.manage"><Users /></RequirePermission>} />
         <Route path="/sistema/permissoes" element={<RequirePermission perm="roles.manage"><Permissions /></RequirePermission>} />
+        <Route path="/sistema/backup" element={<RequirePermission perm="backup.create"><BackupPage /></RequirePermission>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
