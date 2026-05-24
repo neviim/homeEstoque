@@ -27,7 +27,7 @@ func (h *ExtraHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		FROM items i
 		LEFT JOIN categories c ON c.id = i.category_id
 		LEFT JOIN locations l ON l.id = i.location_id
-		ORDER BY i.created_at DESC LIMIT 8`)
+		ORDER BY i.created_at DESC LIMIT 6`)
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {
@@ -37,6 +37,26 @@ func (h *ExtraHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 				&i.CreatedAt, &i.UpdatedAt, &i.CategoryName, &locName); err == nil {
 				i.LocationPath = locName
 				s.RecentItems = append(s.RecentItems, i)
+			}
+		}
+	}
+
+	urows, err := h.DB.Query(`
+		SELECT i.id, i.code, i.name, i.quantity, i.unit, i.condition, i.created_at, i.updated_at,
+			   COALESCE(c.name, ''), COALESCE(l.name, '')
+		FROM items i
+		LEFT JOIN categories c ON c.id = i.category_id
+		LEFT JOIN locations l ON l.id = i.location_id
+		ORDER BY i.updated_at DESC LIMIT 5`)
+	if err == nil {
+		defer urows.Close()
+		for urows.Next() {
+			var i models.Item
+			var locName string
+			if err := urows.Scan(&i.ID, &i.Code, &i.Name, &i.Quantity, &i.Unit, &i.Condition,
+				&i.CreatedAt, &i.UpdatedAt, &i.CategoryName, &locName); err == nil {
+				i.LocationPath = locName
+				s.UpdatedItems = append(s.UpdatedItems, i)
 			}
 		}
 	}
@@ -57,6 +77,9 @@ func (h *ExtraHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 
 	if s.RecentItems == nil {
 		s.RecentItems = []models.Item{}
+	}
+	if s.UpdatedItems == nil {
+		s.UpdatedItems = []models.Item{}
 	}
 	if s.TopCategories == nil {
 		s.TopCategories = []models.Category{}

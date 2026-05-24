@@ -4,6 +4,9 @@ node_modules/
 # ─── Build ───────────────────────────────────────────────────────
 dist/
 
+# ─── Cobertura de testes (Vitest) ────────────────────────────────
+coverage/
+
 # ─── TypeScript build cache ──────────────────────────────────────
 *.tsbuildinfo
 tsconfig.tsbuildinfo

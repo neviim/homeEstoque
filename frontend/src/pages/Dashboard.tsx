@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import type { DashboardStats } from "@/types";
-import { Package, Boxes, Folder, MapPin, TrendingUp, ArrowRight } from "lucide-react";
+import { Package, Boxes, Folder, MapPin, TrendingUp, ArrowRight, History } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -65,6 +65,47 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      <div className="card mb-8">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+          <History className="w-4 h-4 text-slate-500" />
+          <h2 className="font-semibold text-slate-900">Últimos itens modificados</h2>
+        </div>
+        {data.updated_items.length === 0 ? (
+          <div className="px-5 py-8 text-sm text-slate-500 text-center">Nenhum item modificado ainda.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
+                <tr>
+                  <th className="text-left font-medium px-5 py-3">Item</th>
+                  <th className="text-left font-medium px-5 py-3">Categoria</th>
+                  <th className="text-left font-medium px-5 py-3">Local</th>
+                  <th className="text-right font-medium px-5 py-3">Quantidade</th>
+                  <th className="text-right font-medium px-5 py-3">Modificado em</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {data.updated_items.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50 transition">
+                    <td className="px-5 py-3">
+                      <Link to={`/itens/${item.id}`} className="font-medium text-slate-900 hover:text-brand-600">
+                        {item.name}
+                      </Link>
+                    </td>
+                    <td className="px-5 py-3 text-slate-600">{item.category_name || "—"}</td>
+                    <td className="px-5 py-3 text-slate-600">{item.location_path || "—"}</td>
+                    <td className="px-5 py-3 text-right text-slate-900">
+                      {item.quantity} {item.unit}
+                    </td>
+                    <td className="px-5 py-3 text-right text-xs text-slate-500">{formatDateTime(item.updated_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">

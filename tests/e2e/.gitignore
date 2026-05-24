@@ -1,0 +1,17 @@
+# ─── Dependências npm ────────────────────────────────────────────
+node_modules/
+
+# ─── Browsers Playwright (~640MB) ────────────────────────────────
+# Cache local de Chromium/Firefox. Em CI o GitHub Actions instala
+# via `playwright install --with-deps chromium`.
+.playwright-cache/
+
+# ─── Artefatos de runs falhos ────────────────────────────────────
+test-results/
+playwright-report/
+*.png
+*.webm
+*.zip
+
+# ─── Logs ────────────────────────────────────────────────────────
+*.log

@@ -118,5 +118,6 @@ export interface DashboardStats {
   total_locations: number;
   total_value: number;
   recent_items: Item[];
+  updated_items: Item[];
   top_categories: Category[];
 }

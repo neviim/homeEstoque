@@ -18,6 +18,12 @@ api.interceptors.request.use((config) => {
 // Controle leve para evitar spam de toasts em 403 — um por janela de 2s.
 let last403At = 0;
 
+// Exposto apenas para testes resetarem o estado do rate-limit entre casos.
+// Não usado pela aplicação em produção.
+export function _resetRateLimitForTesting() {
+  last403At = 0;
+}
+
 api.interceptors.response.use(
   (res) => res,
   (err) => {

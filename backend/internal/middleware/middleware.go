@@ -15,22 +15,31 @@ type ctxKey string
 const UserIDKey ctxKey = "user_id"
 const UserEmailKey ctxKey = "user_email"
 
+// writeJSONError envia um body JSON com campo "error" e o status code dado.
+// Não usa http.Error pois ela força Content-Type: text/plain — o frontend
+// depende de JSON para extrair a mensagem via `err.response.data.error`.
+func writeJSONError(w http.ResponseWriter, status int, msg string) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	_, _ = w.Write([]byte(`{"error":"` + msg + `"}` + "\n"))
+}
+
 func Auth(secret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			header := r.Header.Get("Authorization")
 			if header == "" {
-				http.Error(w, "missing authorization header", http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "missing authorization header")
 				return
 			}
 			parts := strings.SplitN(header, " ", 2)
 			if len(parts) != 2 || parts[0] != "Bearer" {
-				http.Error(w, "invalid authorization header", http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "invalid authorization header")
 				return
 			}
 			claims, err := auth.ParseToken(parts[1], secret)
 			if err != nil {
-				http.Error(w, "invalid token", http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "invalid token")
 				return
 			}
 			ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
@@ -55,19 +64,16 @@ func RequirePermission(db *sql.DB, key string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			uid := GetUserID(r)
 			if uid == 0 {
-				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `{"error":"sem autenticação"}`, http.StatusUnauthorized)
+				writeJSONError(w, http.StatusUnauthorized, "sem autenticação")
 				return
 			}
 			ok, err := permissions.HasPermission(db, uid, key)
 			if err != nil {
-				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `{"error":"erro ao verificar permissão"}`, http.StatusInternalServerError)
+				writeJSONError(w, http.StatusInternalServerError, "erro ao verificar permissão")
 				return
 			}
 			if !ok {
-				w.Header().Set("Content-Type", "application/json")
-				http.Error(w, `{"error":"acesso negado"}`, http.StatusForbidden)
+				writeJSONError(w, http.StatusForbidden, "acesso negado")
 				return
 			}
 			next.ServeHTTP(w, r)

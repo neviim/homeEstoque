@@ -88,5 +88,6 @@ type DashboardStats struct {
 	TotalLocations  int     `json:"total_locations"`
 	TotalValue      float64 `json:"total_value"`
 	RecentItems     []Item  `json:"recent_items"`
+	UpdatedItems    []Item  `json:"updated_items"`
 	TopCategories   []Category `json:"top_categories"`
 }

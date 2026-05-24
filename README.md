@@ -17,6 +17,7 @@ Sistema completo de **controle de estoque doméstico** com backend em Go e front
 - **Sistema de permissões granulares** estilo Discord — perfis customizáveis com 15 capacidades editáveis (UI em `/sistema/permissoes`)
 - **Servidor MCP** — Claude pode consultar e movimentar itens por linguagem natural
 - Dashboard com estatísticas e valor patrimonial estimado
+- **256 testes automatizados** (Go + Vitest + Playwright E2E) — rode `./test.sh` na raiz; CI no GitHub Actions; veja [docs/testes.md](docs/testes.md)
 
 ## Stack
 
