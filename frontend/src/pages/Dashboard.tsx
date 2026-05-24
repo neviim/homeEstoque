@@ -2,10 +2,104 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "@/lib/api";
 import type { DashboardStats } from "@/types";
-import { Package, Boxes, Folder, MapPin, TrendingUp, ArrowRight, History } from "lucide-react";
+import { Package, Boxes, Folder, MapPin, TrendingUp, ArrowRight, History, HardDrive, CheckCircle2, AlertTriangle, CalendarClock } from "lucide-react";
 import PageHeader from "@/components/ui/PageHeader";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+
+interface BackupSchedule {
+  enabled: boolean;
+  frequency: "daily" | "weekly" | "hourly";
+  next_run_at?: string;
+  last_run_at?: string;
+}
+
+interface BackupSummary {
+  id: number;
+  created_at: string;
+  type: "manual" | "auto";
+  status: "ok" | "corrupted" | "missing" | "orphan" | "unverified";
+}
+
+function BackupStatusCard() {
+  const { data: schedule } = useQuery<BackupSchedule>({
+    queryKey: ["backup", "schedule"],
+    queryFn: async () => (await api.get("/backup/schedule")).data,
+    staleTime: 30_000,
+  });
+
+  const { data: backups = [] } = useQuery<BackupSummary[]>({
+    queryKey: ["backups"],
+    queryFn: async () => (await api.get<{ backups: BackupSummary[] }>("/backups")).data.backups ?? [],
+    staleTime: 30_000,
+  });
+
+  const latest = backups[0];
+  const isActive = schedule?.enabled ?? false;
+
+  const frequencyLabel: Record<string, string> = {
+    hourly: "por hora",
+    daily: "diário",
+    weekly: "semanal",
+  };
+
+  return (
+    <div className="card p-4 mb-8 flex items-center gap-4">
+      <div className="flex items-center justify-center w-8 h-8 shrink-0">
+        {isActive ? (
+          <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex h-3 w-3 rounded-full bg-emerald-500" />
+          </span>
+        ) : (
+          <span className="inline-flex h-3 w-3 rounded-full bg-slate-300" />
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <HardDrive className="w-4 h-4 text-slate-400 shrink-0" />
+          <span className="text-sm font-medium text-slate-700">
+            {isActive
+              ? `Backup automático ativo · ${frequencyLabel[schedule?.frequency ?? "daily"] ?? schedule?.frequency}`
+              : "Backup automático desativado"}
+          </span>
+          {isActive && schedule?.next_run_at && (
+            <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+              <CalendarClock className="w-3.5 h-3.5" />
+              Próximo: {formatDateTime(schedule.next_run_at)}
+            </span>
+          )}
+        </div>
+
+        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-500">
+          {latest ? (
+            <>
+              {latest.status === "ok" ? (
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              ) : (
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+              )}
+              Último backup: {formatDateTime(latest.created_at)}
+              {latest.status !== "ok" && (
+                <span className="text-amber-600 font-medium">· {latest.status}</span>
+              )}
+            </>
+          ) : (
+            <span>Nenhum backup realizado ainda</span>
+          )}
+        </div>
+      </div>
+
+      <Link
+        to="/sistema/backup"
+        className="shrink-0 text-xs text-brand-600 hover:underline inline-flex items-center gap-1"
+      >
+        Gerenciar <ArrowRight className="w-3 h-3" />
+      </Link>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { hasPermission } = useAuth();
@@ -51,6 +145,8 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {hasPermission("backup.create") && <BackupStatusCard />}
 
       {hasPermission("dashboard.view_value") && data.total_value > 0 && (
         <div className="card p-6 mb-8 bg-gradient-to-br from-brand-50 to-indigo-50 border-brand-100">
