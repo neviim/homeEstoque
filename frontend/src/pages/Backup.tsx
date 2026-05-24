@@ -414,9 +414,16 @@ export default function BackupPage() {
   const { hasPermission } = useAuth();
   const [restoreTarget, setRestoreTarget] = useState<Backup | null>(null);
 
-  const { data: backups = [], isLoading } = useQuery<Backup[]>({
+  const { data: schedule } = useQuery<Schedule>({
+    queryKey: ["backup", "schedule"],
+    queryFn: async () => (await api.get("/backup/schedule")).data,
+  });
+
+  const { data: backups = [], isLoading, dataUpdatedAt } = useQuery<Backup[]>({
     queryKey: ["backups"],
     queryFn: async () => (await api.get<{ backups: Backup[] }>("/backups")).data.backups ?? [],
+    refetchInterval: schedule?.enabled ? 30_000 : false,
+    refetchIntervalInBackground: false,
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["backups"] });
@@ -509,6 +516,15 @@ export default function BackupPage() {
       {canSchedule && <ScheduleCard />}
 
       <div className="card">
+        {schedule?.enabled && dataUpdatedAt > 0 && (
+          <div className="flex items-center gap-1.5 px-5 py-2.5 border-b border-slate-100 bg-slate-50/60 rounded-t-lg">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs text-slate-500">
+              Atualização automática ativa — última consulta{" "}
+              {new Date(dataUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </span>
+          </div>
+        )}
         {isLoading ? (
           <div className="flex justify-center p-12">
             <Loader2 className="w-6 h-6 animate-spin text-brand-500" />

@@ -123,11 +123,11 @@ describe("BackupPage — criar backup", () => {
 
 describe("BackupPage — verificar integridade", () => {
   it("botão Verificar chama POST /api/backups/{id}/verify e exibe toast ok", async () => {
-    let verifyId: string | readonly string[] = "";
+    let verifyId = "";
     adminHandlers(server);
     server.use(
       http.post("http://localhost/api/backups/:id/verify", ({ params }) => {
-        verifyId = params.id;
+        verifyId = String(params.id ?? "");
         return HttpResponse.json({ ...seedBackups[0], status: "ok" });
       }),
     );
@@ -145,11 +145,11 @@ describe("BackupPage — verificar integridade", () => {
 
 describe("BackupPage — excluir backup", () => {
   it("botão Excluir chama DELETE /api/backups/{id}", async () => {
-    let deleteId: string | readonly string[] = "";
+    let deleteId = "";
     adminHandlers(server);
     server.use(
       http.delete("http://localhost/api/backups/:id", ({ params }) => {
-        deleteId = params.id;
+        deleteId = String(params.id ?? "");
         return HttpResponse.json({ ok: true });
       }),
     );
