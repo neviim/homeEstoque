@@ -200,14 +200,34 @@ function ScheduleCard() {
         )}
 
         <div>
-          <label className="label">Horário</label>
-          <input
-            type="time"
-            className="input"
-            value={local.time_of_day}
-            onChange={(e) => setLocal({ ...local, time_of_day: e.target.value })}
-            disabled={!local.enabled}
-          />
+          <label className="label">Horário (24h)</label>
+          <div className="flex gap-1.5 items-center">
+            <select
+              className="input"
+              value={local.time_of_day.split(":")[0]}
+              onChange={(e) =>
+                setLocal({ ...local, time_of_day: `${e.target.value}:${local.time_of_day.split(":")[1]}` })
+              }
+              disabled={!local.enabled}
+            >
+              {Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0")).map((h) => (
+                <option key={h} value={h}>{h}h</option>
+              ))}
+            </select>
+            <span className="text-slate-400 text-sm font-medium">:</span>
+            <select
+              className="input"
+              value={local.time_of_day.split(":")[1]}
+              onChange={(e) =>
+                setLocal({ ...local, time_of_day: `${local.time_of_day.split(":")[0]}:${e.target.value}` })
+              }
+              disabled={!local.enabled}
+            >
+              {["00", "15", "30", "45"].map((m) => (
+                <option key={m} value={m}>{m}min</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div>
