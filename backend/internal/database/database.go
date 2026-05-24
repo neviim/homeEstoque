@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -138,7 +139,7 @@ func migrate(db *sql.DB) error {
 	CREATE TABLE IF NOT EXISTS backup_schedule (
 		id              INTEGER PRIMARY KEY CHECK(id = 1),
 		enabled         INTEGER NOT NULL DEFAULT 0,
-		frequency       TEXT NOT NULL DEFAULT 'daily' CHECK(frequency IN ('daily','weekly')),
+		frequency       TEXT NOT NULL DEFAULT 'daily' CHECK(frequency IN ('daily','weekly','hourly')),
 		weekday         INTEGER,
 		time_of_day     TEXT NOT NULL DEFAULT '03:00',
 		retention_count INTEGER NOT NULL DEFAULT 7,
@@ -160,5 +161,41 @@ func migrate(db *sql.DB) error {
 	// Adiciona colunas em DBs existentes (idempotente: ignora erro de coluna duplicada).
 	addColumn(db, "users", "role TEXT NOT NULL DEFAULT 'user'")
 	addColumn(db, "users", "status TEXT NOT NULL DEFAULT 'active'")
+
+	// Atualiza o CHECK de backup_schedule para incluir 'hourly' (se ainda não tiver).
+	if err := migrateBackupScheduleAddHourly(db); err != nil {
+		return err
+	}
 	return nil
+}
+
+// migrateBackupScheduleAddHourly recria backup_schedule com CHECK atualizado
+// (inclui 'hourly') quando o DB já existia com a constraint antiga.
+func migrateBackupScheduleAddHourly(db *sql.DB) error {
+	var tableDDL string
+	if err := db.QueryRow(
+		`SELECT sql FROM sqlite_master WHERE type='table' AND name='backup_schedule'`,
+	).Scan(&tableDDL); err != nil {
+		return nil // tabela não existe ainda — CREATE IF NOT EXISTS acima criará com o CHECK correto
+	}
+	if strings.Contains(tableDDL, "'hourly'") {
+		return nil // já migrado
+	}
+	_, err := db.Exec(`
+		CREATE TABLE backup_schedule_v2 (
+			id              INTEGER PRIMARY KEY CHECK(id = 1),
+			enabled         INTEGER NOT NULL DEFAULT 0,
+			frequency       TEXT NOT NULL DEFAULT 'daily' CHECK(frequency IN ('daily','weekly','hourly')),
+			weekday         INTEGER,
+			time_of_day     TEXT NOT NULL DEFAULT '03:00',
+			retention_count INTEGER NOT NULL DEFAULT 7,
+			last_run_at     DATETIME,
+			next_run_at     DATETIME,
+			updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+		INSERT INTO backup_schedule_v2 SELECT * FROM backup_schedule;
+		DROP TABLE backup_schedule;
+		ALTER TABLE backup_schedule_v2 RENAME TO backup_schedule;
+	`)
+	return err
 }

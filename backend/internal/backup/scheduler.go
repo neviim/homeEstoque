@@ -17,7 +17,7 @@ import (
 // Schedule é a representação serializável da row singleton em backup_schedule.
 type Schedule struct {
 	Enabled        bool       `json:"enabled"`
-	Frequency      string     `json:"frequency"`   // "daily" | "weekly"
+	Frequency      string     `json:"frequency"`   // "daily" | "weekly" | "hourly"
 	Weekday        *int       `json:"weekday"`     // 0=Domingo..6=Sábado (apenas se weekly)
 	TimeOfDay      string     `json:"time_of_day"` // "HH:MM"
 	RetentionCount int        `json:"retention_count"`
@@ -221,7 +221,8 @@ func updateNextRun(ctx context.Context, db *sql.DB, next *time.Time) error {
 }
 
 // cronSpec converte uma Schedule num cron expression de 5 campos.
-//   "daily 03:00"           → "0 3 * * *"
+//   "hourly"               → "MM * * * *"   (MM = minuto de time_of_day)
+//   "daily 03:00"          → "0 3 * * *"
 //   "weekly 0 (dom) 03:00" → "0 3 * * 0"
 func cronSpec(s Schedule) (string, error) {
 	h, m, err := parseHHMM(s.TimeOfDay)
@@ -229,6 +230,8 @@ func cronSpec(s Schedule) (string, error) {
 		return "", err
 	}
 	switch s.Frequency {
+	case "hourly":
+		return fmt.Sprintf("%d * * * *", m), nil
 	case "daily":
 		return fmt.Sprintf("%d %d * * *", m, h), nil
 	case "weekly":

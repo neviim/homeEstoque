@@ -32,7 +32,7 @@ interface Backup {
 
 interface Schedule {
   enabled: boolean;
-  frequency: "daily" | "weekly";
+  frequency: "daily" | "weekly" | "hourly";
   weekday: number | null;
   time_of_day: string;
   retention_count: number;
@@ -173,9 +173,10 @@ function ScheduleCard() {
           <select
             className="input"
             value={local.frequency}
-            onChange={(e) => setLocal({ ...local, frequency: e.target.value as "daily" | "weekly" })}
+            onChange={(e) => setLocal({ ...local, frequency: e.target.value as "daily" | "weekly" | "hourly" })}
             disabled={!local.enabled}
           >
+            <option value="hourly">A cada hora</option>
             <option value="daily">Diário</option>
             <option value="weekly">Semanal</option>
           </select>
@@ -200,34 +201,54 @@ function ScheduleCard() {
         )}
 
         <div>
-          <label className="label">Horário (24h)</label>
-          <div className="flex gap-1.5 items-center">
-            <select
-              className="input"
-              value={local.time_of_day.split(":")[0]}
-              onChange={(e) =>
-                setLocal({ ...local, time_of_day: `${e.target.value}:${local.time_of_day.split(":")[1]}` })
-              }
-              disabled={!local.enabled}
-            >
-              {Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0")).map((h) => (
-                <option key={h} value={h}>{h}h</option>
-              ))}
-            </select>
-            <span className="text-slate-400 text-sm font-medium">:</span>
-            <select
-              className="input"
-              value={local.time_of_day.split(":")[1]}
-              onChange={(e) =>
-                setLocal({ ...local, time_of_day: `${local.time_of_day.split(":")[0]}:${e.target.value}` })
-              }
-              disabled={!local.enabled}
-            >
-              {["00", "15", "30", "45"].map((m) => (
-                <option key={m} value={m}>{m}min</option>
-              ))}
-            </select>
-          </div>
+          {local.frequency === "hourly" ? (
+            <>
+              <label className="label">Minuto de execução</label>
+              <select
+                className="input"
+                value={local.time_of_day.split(":")[1]}
+                onChange={(e) =>
+                  setLocal({ ...local, time_of_day: `00:${e.target.value}` })
+                }
+                disabled={!local.enabled}
+              >
+                {["00", "15", "30", "45"].map((m) => (
+                  <option key={m} value={m}>:{m}</option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <>
+              <label className="label">Horário (24h)</label>
+              <div className="flex gap-1.5 items-center">
+                <select
+                  className="input"
+                  value={local.time_of_day.split(":")[0]}
+                  onChange={(e) =>
+                    setLocal({ ...local, time_of_day: `${e.target.value}:${local.time_of_day.split(":")[1]}` })
+                  }
+                  disabled={!local.enabled}
+                >
+                  {Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0")).map((h) => (
+                    <option key={h} value={h}>{h}h</option>
+                  ))}
+                </select>
+                <span className="text-slate-400 text-sm font-medium">:</span>
+                <select
+                  className="input"
+                  value={local.time_of_day.split(":")[1]}
+                  onChange={(e) =>
+                    setLocal({ ...local, time_of_day: `${local.time_of_day.split(":")[0]}:${e.target.value}` })
+                  }
+                  disabled={!local.enabled}
+                >
+                  {["00", "15", "30", "45"].map((m) => (
+                    <option key={m} value={m}>{m}min</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
         </div>
 
         <div>
