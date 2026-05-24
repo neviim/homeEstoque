@@ -271,8 +271,10 @@ func (m *Manager) GetSchedule(ctx context.Context) (Schedule, error) {
 // UpdateSchedule persiste mudanças e aciona reload do cron.
 func (m *Manager) UpdateSchedule(ctx context.Context, s Schedule) (Schedule, error) {
 	// Valida cronSpec antes de gravar
+	var spec string
 	if s.Enabled {
-		if _, err := cronSpec(s); err != nil {
+		var err error
+		if spec, err = cronSpec(s); err != nil {
 			return Schedule{}, err
 		}
 	}
@@ -286,11 +288,24 @@ func (m *Manager) UpdateSchedule(ctx context.Context, s Schedule) (Schedule, err
 	if s.Weekday != nil {
 		weekday = *s.Weekday
 	}
+
+	// Calcula next_run_at de forma síncrona para que a resposta HTTP já traga
+	// o valor correto (o goroutine do scheduler também o atualizará depois,
+	// mas pode chegar tarde demais para o client).
+	var nextRun any
+	if s.Enabled && spec != "" {
+		if parsed, err := cron.ParseStandard(spec); err == nil {
+			t := parsed.Next(time.Now())
+			nextRun = t
+		}
+	}
+
 	_, err := m.DB().ExecContext(ctx,
 		`UPDATE backup_schedule
-		 SET enabled=?, frequency=?, weekday=?, time_of_day=?, retention_count=?, updated_at=CURRENT_TIMESTAMP
+		 SET enabled=?, frequency=?, weekday=?, time_of_day=?, retention_count=?,
+		     next_run_at=?, updated_at=CURRENT_TIMESTAMP
 		 WHERE id=1`,
-		boolToInt(s.Enabled), s.Frequency, weekday, s.TimeOfDay, s.RetentionCount,
+		boolToInt(s.Enabled), s.Frequency, weekday, s.TimeOfDay, s.RetentionCount, nextRun,
 	)
 	if err != nil {
 		return Schedule{}, err
