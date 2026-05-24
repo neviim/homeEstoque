@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeAll, afterAll, afterEach, beforeEach } 
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { setupServer } from "msw/node";
 import { http, HttpResponse } from "msw";
 
@@ -21,21 +22,32 @@ beforeEach(() => localStorage.clear());
 // /auth/me com as permissions dadas.
 async function renderLayout(perms: string[], role = "user") {
   const user = { id: 1, name: "Alice", email: "a@x.com", role, status: "active", permissions: perms };
-  server.use(http.get("http://localhost/api/auth/me", () => HttpResponse.json(user)));
+  server.use(
+    http.get("http://localhost/api/auth/me", () => HttpResponse.json(user)),
+    http.get("http://localhost/api/version", () =>
+      HttpResponse.json({ running: "0.1.0", available: "0.1.0", update_available: false }),
+    ),
+  );
   localStorage.setItem("token", "tok");
   localStorage.setItem("user", JSON.stringify(user));
 
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+
   render(
-    <AuthProvider>
-      <MemoryRouter initialEntries={["/"]}>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<div>conteudo</div>} />
-            <Route path="*" element={<div>outra rota</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
-    </AuthProvider>,
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <MemoryRouter initialEntries={["/"]}>
+          <Routes>
+            <Route path="/" element={<Layout />}>
+              <Route index element={<div>conteudo</div>} />
+              <Route path="*" element={<div>outra rota</div>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </AuthProvider>
+    </QueryClientProvider>,
   );
 
   // Espera pelo nome do usuário aparecer (garante que loading terminou)

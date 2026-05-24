@@ -33,6 +33,11 @@ function makeWrapper({ route = "/", noAuth = false }: ProvidersOptions = {}) {
   };
 }
 
+/** Wrapper factory para usar com renderHook (retorna o componente wrapper). */
+export function createWrapper(options: ProvidersOptions = {}) {
+  return makeWrapper(options);
+}
+
 export function renderWithProviders(
   ui: ReactElement,
   options: ProvidersOptions & Omit<RenderOptions, "wrapper"> = {},

@@ -39,6 +39,8 @@ var Catalog = []Permission{
 	{"backup.restore", "Restaurar Backup", "Restaurar o sistema a partir de um backup", "Sistema"},
 	{"backup.download", "Baixar Backup", "Baixar arquivos de backup para a máquina local", "Sistema"},
 	{"backup.schedule", "Agendar Backups", "Configurar o agendamento automático de backups", "Sistema"},
+
+	{"system.update", "Aplicar Atualização", "Reiniciar o sistema para aplicar uma nova versão", "Sistema"},
 }
 
 // Keys retorna todas as keys do catálogo (útil para o seed do admin).

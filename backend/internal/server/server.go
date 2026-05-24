@@ -26,6 +26,10 @@ type Options struct {
 	// Quando nil, essas rotas não são registradas (útil em testes que não
 	// exercitam o módulo de backup).
 	BackupManager *backup.Manager
+	// RepoRoot é o diretório raiz do repositório, usado para ler o arquivo VERSION.
+	RepoRoot string
+	// RestartFunc é chamado pelo handler POST /api/version/apply.
+	RestartFunc func()
 }
 
 // BuildRouter monta o stack completo de middlewares e rotas.
@@ -69,6 +73,10 @@ func BuildRouter(db *sql.DB, cfg *config.Config, opts Options) http.Handler {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"status":"ok","service":"homeestoque-api"}`))
 	})
+
+	// Rota pública de versão — não requer auth para exibir na tela de login.
+	verH := &handlers.VersionHandler{RepoRoot: opts.RepoRoot, RestartFn: opts.RestartFunc}
+	r.Get("/api/version", verH.Get)
 
 	fs := http.StripPrefix("/uploads/", http.FileServer(http.Dir(cfg.UploadDir)))
 	r.Handle("/uploads/*", fs)
@@ -124,6 +132,8 @@ func BuildRouter(db *sql.DB, cfg *config.Config, opts Options) http.Handler {
 			r.With(middleware.RequirePermission(db, "roles.manage")).Put("/roles/{id}", roleH.Update)
 			r.With(middleware.RequirePermission(db, "roles.manage")).Delete("/roles/{id}", roleH.Delete)
 			r.With(middleware.RequirePermission(db, "roles.manage")).Put("/roles/{id}/permissions", roleH.UpdatePermissions)
+
+			r.With(middleware.RequirePermission(db, "system.update")).Post("/version/apply", verH.Apply)
 
 			if opts.BackupManager != nil {
 				bkH := &handlers.BackupHandler{Manager: opts.BackupManager}

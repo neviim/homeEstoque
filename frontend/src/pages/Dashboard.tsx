@@ -6,6 +6,7 @@ import { Package, Boxes, Folder, MapPin, TrendingUp, ArrowRight, History, HardDr
 import PageHeader from "@/components/ui/PageHeader";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import UpdateAvailableCard from "@/components/UpdateAvailableCard";
 
 interface BackupSchedule {
   enabled: boolean;
@@ -145,6 +146,8 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {hasPermission("system.update") && <UpdateAvailableCard />}
 
       {hasPermission("backup.create") && <BackupStatusCard />}
 

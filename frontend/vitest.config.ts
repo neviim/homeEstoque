@@ -6,6 +6,10 @@ import path from "path";
 // dev incompatível com jsdom). Mantém o alias "@" igual ao prod.
 export default defineConfig({
   plugins: [react()],
+  define: {
+    // Replica o define do vite.config para que os testes enxerguem a constante.
+    __APP_VERSION__: JSON.stringify("test"),
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),

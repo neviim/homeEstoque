@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Package,
@@ -16,6 +16,7 @@ import {
   HardDrive,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useVersion } from "@/hooks/useVersion";
 import { cn } from "@/lib/utils";
 import ProfileModal from "@/components/ui/ProfileModal";
 
@@ -37,6 +38,7 @@ const navItems: NavItem[] = [
 
 export default function Layout() {
   const { user, logout, isViewer, hasPermission } = useAuth();
+  const { running, updateAvailable, dismissed, available } = useVersion();
   const [showProfile, setShowProfile] = useState(false);
   const location = useLocation();
   const sistemaOpen = location.pathname.startsWith("/sistema");
@@ -209,6 +211,22 @@ export default function Layout() {
         </div>
 
         <ProfileModal open={showProfile} onClose={() => setShowProfile(false)} />
+
+        <div className="px-4 py-2 border-t border-slate-100">
+          <div className="flex items-center justify-center gap-1.5">
+            <span className="text-[10px] text-slate-400 tabular-nums">v{running}</span>
+            {updateAvailable && !dismissed && (
+              <Link
+                to="/"
+                className="inline-flex items-center gap-1 text-[10px] text-amber-600 hover:text-amber-700"
+                title={`Nova versão v${available} disponível — aplicar no Dashboard`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                atualização
+              </Link>
+            )}
+          </div>
+        </div>
       </aside>
 
       <main className="flex-1 overflow-auto">
