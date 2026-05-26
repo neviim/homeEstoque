@@ -4,7 +4,10 @@ before:
   hooks:
     - bash -c 'cd backend && go mod tidy'
     - bash -c 'cd backend && go test ./...'
-    - bash -c 'cd frontend && npm ci'
+    # 'npm install' (não 'ci') porque o lock do esbuild 0.28 referencia
+    # @esbuild/netbsd-arm64 como dep regular (não optional) e o npm do CI
+    # rejeita em runner linux. 'npm install' resolve sem travar.
+    - bash -c 'cd frontend && npm install --no-audit --no-fund --no-progress'
     - bash -c 'cd frontend && npm run build'
 
 builds:
