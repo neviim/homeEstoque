@@ -90,10 +90,22 @@ count_tests() {
       n=$(grep -cE '^\s*--- (PASS|FAIL):' "$logfile" 2>/dev/null || echo 0)
       ;;
     vitest)
-      # Vitest imprime no final algo como: "Tests  84 passed (84)" — o
-      # segundo número é o total. Pegamos a última ocorrência.
-      n=$(grep -oE 'Tests[[:space:]]+[0-9]+( failed \| )?[0-9]* ?passed[[:space:]]*\(([0-9]+)\)' "$logfile" \
-          | tail -1 | grep -oE '\([0-9]+\)$' | tr -d '()' || true)
+      # Vitest imprime no final algo como "Tests  98 passed (98)".
+      # Strip de ANSI antes de parsear (Vitest pode manter cores mesmo sem TTY).
+      local clean
+      clean=$(sed 's/\x1b\[[0-9;]*m//g' "$logfile" 2>/dev/null || cat "$logfile")
+      # Tentativa 1: linha "Tests  N passed (N)" — pega o N entre parênteses
+      n=$(printf '%s\n' "$clean" \
+          | grep -E 'Tests[[:space:]]+[0-9]' \
+          | grep -oE '\([0-9]+\)' | tr -d '()' | tail -1 || true)
+      # Tentativa 2: qualquer "N passed (N)" — resume de falhas+passes misturado
+      [[ -z "$n" || "$n" == "0" ]] && \
+        n=$(printf '%s\n' "$clean" \
+            | grep -oE '[0-9]+ passed \([0-9]+\)' \
+            | grep -oE '\([0-9]+\)' | tr -d '()' | tail -1 || true)
+      # Tentativa 3: contar linhas "✓ " individualmente (fallback mais lento)
+      [[ -z "$n" || "$n" == "0" ]] && \
+        n=$(printf '%s\n' "$clean" | grep -cE '^\s*(✓|√)\s' 2>/dev/null || true)
       [[ -z "$n" ]] && n=0
       ;;
     playwright)
@@ -181,7 +193,8 @@ run_frontend() {
   if [[ $COVERAGE -eq 1 ]]; then
     "$NPM_BIN" run test:coverage
   else
-    "$NPM_BIN" test
+    # --reporter=verbose garante a linha "Tests N passed (N)" mesmo sem TTY
+    "$NPM_BIN" test -- --reporter=verbose
   fi
 }
 
