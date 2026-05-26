@@ -99,6 +99,10 @@ jobs:
 
       - name: Install Playwright browsers
         working-directory: tests/e2e
+        env:
+          # playwright.config.ts sobrescreve esse path no test runner;
+          # precisamos passar igual aqui para o install gravar no mesmo lugar.
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/tests/e2e/.playwright-cache
         run: npx playwright install --with-deps chromium
 
       - name: Build MCP binary (necessário para mcp.spec.ts)
@@ -109,6 +113,7 @@ jobs:
         working-directory: tests/e2e
         env:
           CI: "true"
+          PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/tests/e2e/.playwright-cache
         run: npx playwright test
 
       - uses: actions/upload-artifact@v4
