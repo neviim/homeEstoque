@@ -19,7 +19,7 @@ Sistema de inventário doméstico com backend Go, frontend React e servidor MCP 
 - **Sistema de permissões granulares (estilo Discord)** — 15 capacidades nomeadas, perfis customizáveis, mudanças aplicadas em tempo real. Veja [Perfis e Permissões](api/permissoes.md).
 - **Gestão de usuários com aprovação** — auto-cadastros entram como `pending` até serem aprovados por um admin. Veja [Usuários](api/usuarios.md).
 - **MCP Server** — Claude pode consultar e modificar o estoque por linguagem natural. Veja [MCP](mcp/).
-- **304 testes automatizados** — 194 Go + 98 Vitest + 12 E2E Playwright; CI no GitHub Actions.
+- **313 testes automatizados** — 203 Go + 98 Vitest + 12 E2E Playwright; CI no GitHub Actions.
 
 ## Início rápido
 

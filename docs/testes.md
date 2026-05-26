@@ -1,6 +1,6 @@
 # Testes
 
-O HomeEstoque tem **304 testes/cenários automatizados** cobrindo backend Go, frontend React e fluxos E2E (194 Go + 98 Vitest + 12 E2E). Esta página explica como rodar, onde estão organizados e o que cada camada cobre.
+O HomeEstoque tem **313 testes/cenários automatizados** cobrindo backend Go, frontend React e fluxos E2E (203 Go + 98 Vitest + 12 E2E). Esta página explica como rodar, onde estão organizados e o que cada camada cobre.
 
 ## Como rodar
 
@@ -59,13 +59,13 @@ Exemplo de output com `./test.sh --fast --quiet`:
 ```
 HomeEstoque — suíte de testes
 Modo: all +fast +quiet
-  Backend Go ... ✓  194 testes
+  Backend Go ... ✓  203 testes
   Frontend Vitest ... ✓  98 testes
 
 ━━━ Resumo ━━━
-  Backend Go                PASS   194 testes  (2s)
+  Backend Go                PASS   203 testes  (2s)
   Frontend Vitest           PASS    98 testes  (30s)
-  Total: 292 testes
+  Total: 301 testes
 
 Todos os testes passaram ✓
 ```
@@ -164,7 +164,7 @@ homeEstoque/
 
 ## Cobertura por camada
 
-### Backend Go — 194 testes
+### Backend Go — 203 testes
 
 | Pacote | Testes | Cobertura |
 |--------|--------|-----------|

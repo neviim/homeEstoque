@@ -2,7 +2,7 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-  cmd = "GOROOT=/home/neviim/go GOPATH=/home/neviim/go /home/neviim/go/bin/go build -ldflags \"-X main.version=$(cat ../VERSION | tr -d '[:space:'])\" -o ./tmp/main ./cmd/api"
+  cmd = "go build -ldflags \"-X main.version=$(cat ../VERSION | tr -d '[:space:'])\" -o ./tmp/main ./cmd/api"
   bin = "./tmp/main"
   full_bin = "./tmp/main"
   include_ext = ["go"]
