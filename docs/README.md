@@ -8,6 +8,7 @@ Sistema de inventário doméstico com backend Go, frontend React e servidor MCP 
 |-----------|----------|
 | [Arquitetura](arquitetura.md) | Visão geral, banco de dados, sistema de permissões |
 | [Desenvolvimento](desenvolvimento.md) | Setup, hot reload, build, scripts utilitários |
+| [Instalação em servidor](instalacao.md) | Passo a passo para deploy em VPS (binários, systemd, nginx, HTTPS, backups) |
 | [Testes](testes.md) | Como rodar, estrutura, cobertura por camada, CI |
 | [API HTTP](api/) | Referência completa dos endpoints REST com exemplos curl |
 | [Servidor MCP](mcp/) | Configuração e uso das 10 ferramentas MCP |
