@@ -36,7 +36,7 @@ const navItems: NavItem[] = [
 ];
 
 export default function Layout() {
-  const { user, isViewer, hasPermission } = useAuth();
+  const { user, isAdmin, isViewer, hasPermission } = useAuth();
   const { running, updateAvailable, dismissed, available } = useVersion();
   const [showProfile, setShowProfile] = useState(false);
   const location = useLocation();
@@ -204,6 +204,11 @@ export default function Layout() {
             >
               <div className="text-sm font-medium text-slate-900 truncate flex items-center gap-1.5">
                 {user?.name}
+                {isAdmin && (
+                  <span title="Administrador" className="inline-flex shrink-0">
+                    <Shield className="w-3.5 h-3.5 text-amber-600 fill-amber-200" aria-label="Administrador" />
+                  </span>
+                )}
                 {isViewer && (
                   <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 leading-none">
                     Visualizador
