@@ -1,10 +1,83 @@
 # Instalação em servidor
 
-Guia passo a passo para instalar o HomeEstoque em um servidor Linux dedicado (VPS, máquina caseira, Raspberry Pi, etc.). Cobre o caminho **binário pré-compilado** (recomendado) — não precisa instalar Go ou Node no servidor.
-
-> Pré-requisito de conhecimento: noções básicas de shell (`ssh`, `sudo`, editar arquivos com `nano`/`vim`).
+Guia passo a passo para instalar o HomeEstoque em um servidor Linux dedicado (VPS, máquina caseira, Raspberry Pi, etc.).
 
 ---
+
+## Caminho recomendado: Docker (1 comando)
+
+Pré-requisito único: **Docker + Docker Compose v2** instalados no servidor.
+
+```bash
+git clone https://github.com/neviim/homeEstoque
+cd homeEstoque
+./install.sh
+```
+
+O script interativo:
+1. Verifica Docker e Compose no PATH
+2. Pergunta se você tem um domínio (para HTTPS automático via Caddy) ou quer rodar em modo local
+3. Gera `JWT_SECRET` com `openssl rand -hex 32`
+4. Grava `.env` e sobe a stack com `docker compose up -d --build`
+5. Aguarda a API ficar saudável e faz smoke tests
+6. Exibe a URL e o próximo passo (criar o primeiro usuário admin)
+
+O primeiro usuário registrado vira admin automaticamente — abra a URL e clique em **Criar conta**.
+
+### Comandos úteis após instalação
+
+```bash
+./install.sh --update          # atualiza imagens para nova versão do release
+./install.sh --down            # para containers (volume de dados preservado)
+./install.sh --reset           # para E apaga todos os dados
+docker compose logs -f         # logs em tempo real
+docker compose logs -f api     # só a API
+```
+
+### Instalar Docker no Ubuntu/Debian
+
+```bash
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+newgrp docker                  # ou reconecte o SSH
+docker compose version         # deve mostrar v2.x
+```
+
+### Stack do Docker
+
+| Container | Função |
+|-----------|--------|
+| `api` | Backend Go — porta interna 8080, monta volume `/data` |
+| `web` | nginx — SPA + proxy `/api` e `/uploads` → api |
+| `caddy` *(opcional)* | Caddy — HTTPS automático via Let's Encrypt, ativo só com domínio |
+
+Volume único `homeestoque_data` persiste: banco SQLite, fotos e backups.
+
+### HTTPS automático (Caddy)
+
+Quando você fornece um domínio no `install.sh`, o perfil `https` é ativado:
+
+```
+internet ─443→ Caddy ─80→ web (nginx) ─http→ api (Go)
+```
+
+Requisitos: porta 80 e 443 abertas no firewall; DNS do domínio apontando para o IP do servidor. O Caddy emite e renova o certificado Let's Encrypt automaticamente.
+
+### Atualizando para nova versão
+
+```bash
+./install.sh --update
+# ou manualmente:
+VERSION=v0.2.0 docker compose up -d --build
+```
+
+As migrations do banco rodam automaticamente no startup — downtime de ~5 segundos.
+
+---
+
+## Caminho alternativo: deploy em bare-metal (sem Docker)
+
+> Pré-requisito de conhecimento: noções básicas de shell (`ssh`, `sudo`, editar arquivos com `nano`/`vim`).
 
 ## Visão geral
 

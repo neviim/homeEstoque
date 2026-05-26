@@ -1,0 +1,75 @@
+services:
+  # ── API Go ──────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+      args:
+        VERSION: ${VERSION:-latest}
+    image: homeestoque-api:${VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+      DB_PATH: /data/homeestoque.db
+      UPLOAD_DIR: /data/uploads
+      BACKUP_DIR: /data/backups
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required — run install.sh or set it in .env}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+    volumes:
+      - homeestoque_data:/data
+    # Não expõe porta no host — web faz proxy interno
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  # ── Frontend (nginx + SPA) ───────────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+      args:
+        VERSION: ${VERSION:-latest}
+    image: homeestoque-web:${VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    # Exposto no host apenas no perfil local (sem Caddy)
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    profiles:
+      - ""        # ativo por padrão (sem perfil)
+      # Também presente no perfil https (Caddy usa internamente)
+
+  # ── Caddy (HTTPS automático — opcional) ─────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    profiles:
+      - https
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      DOMAIN: ${DOMAIN}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-}
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  homeestoque_data:
+    # Persiste DB + uploads + backups entre restarts e updates
+  caddy_data:
+    # Certificados TLS emitidos pelo Caddy
+  caddy_config:
+    # Config interna do Caddy

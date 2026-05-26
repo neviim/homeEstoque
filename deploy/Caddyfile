@@ -1,0 +1,8 @@
+{$DOMAIN} {
+    encode gzip
+
+    # Caddy obtém certificado Let's Encrypt automaticamente
+    # (HTTP-01 challenge — requer porta 80 acessível na internet)
+
+    reverse_proxy web:80
+}

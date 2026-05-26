@@ -1,0 +1,34 @@
+# Dependências e builds locais
+frontend/node_modules
+frontend/dist
+frontend/.vite
+backend/data
+backend/uploads
+backend/bin
+bin/
+dist/
+
+# Testes
+tests/
+tests/e2e/node_modules
+tests/e2e/.playwright-cache
+tests/e2e/playwright-report
+tests/e2e/test-results
+
+# Dev tooling
+.air/
+tmp/
+*.log
+*.tmp
+
+# Git e CI
+.git
+.github
+.gitignore
+
+# Docs (não precisam entrar no build context)
+docs/
+
+# Ambientes locais (o .env de produção é montado separadamente)
+backend/.env
+.env

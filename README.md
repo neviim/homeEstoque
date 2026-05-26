@@ -78,7 +78,27 @@ homeEstoque/
 
 ## Como rodar
 
-### Opção A — Binários pré-compilados (mais rápido)
+### Opção A — Docker (1 comando, recomendado para servidores)
+
+Pré-requisito único: **Docker + Docker Compose v2**.
+
+```bash
+git clone https://github.com/neviim/homeEstoque
+cd homeEstoque
+./install.sh
+```
+
+O script interativo pergunta domínio (opcional para HTTPS automático via Caddy) e porta, gera o `JWT_SECRET`, builda as imagens baixando os binários do GitHub Releases e sobe tudo. Idempotente — rode de novo para atualizar.
+
+```bash
+./install.sh --update   # atualiza para nova versão
+./install.sh --down     # para containers (dados preservados)
+./install.sh --reset    # para + apaga dados
+```
+
+Guia completo: [docs/instalacao.md](docs/instalacao.md)
+
+### Opção B — Binários pré-compilados (sem Docker)
 
 Cada tag `vX.Y.Z` publica binários em GitHub Releases. Pegue o último direto, sem clonar nem compilar:
 
@@ -104,7 +124,7 @@ Assets disponíveis (sem versão no nome, URLs estáveis):
 - `homeestoque_frontend.tar.gz`
 - `checksums.txt` (SHA-256 dos arquivos acima)
 
-### Opção B — Rodar do código (desenvolvimento)
+### Opção C — Rodar do código (desenvolvimento)
 
 ```bash
 git clone https://github.com/neviim/homeEstoque

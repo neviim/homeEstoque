@@ -1,0 +1,60 @@
+# syntax=docker/dockerfile:1
+# ─── Stage 1: fetch binary from GitHub Releases ───────────────────────────────
+FROM alpine:3.21 AS fetch
+
+ARG VERSION=latest
+ARG TARGETARCH
+
+RUN apk add --no-cache curl ca-certificates
+
+WORKDIR /dist
+
+# Resolve "latest" → real tag, then download the tarball
+RUN set -eux; \
+    if [ "$VERSION" = "latest" ]; then \
+        TAG=$(curl -fsSL -o /dev/null -w '%{url_effective}' \
+              https://github.com/neviim/homeEstoque/releases/latest \
+              | sed 's|.*/tag/||'); \
+    else \
+        TAG="$VERSION"; \
+    fi; \
+    \
+    case "$TARGETARCH" in \
+        amd64) ARCH=linux_amd64 ;; \
+        arm64) ARCH=linux_arm64 ;; \
+        *)     echo "Unsupported arch: $TARGETARCH" && exit 1 ;; \
+    esac; \
+    \
+    curl -fsSL -o app.tar.gz \
+        "https://github.com/neviim/homeEstoque/releases/download/${TAG}/homeestoque_${ARCH}.tar.gz"; \
+    tar xzf app.tar.gz; \
+    ls -lh
+
+# ─── Stage 2: minimal runtime ─────────────────────────────────────────────────
+FROM alpine:3.21
+
+RUN apk add --no-cache ca-certificates wget su-exec \
+    && adduser -D -u 1000 app
+
+COPY --from=fetch /dist/homeestoque /usr/local/bin/homeestoque
+RUN chmod +x /usr/local/bin/homeestoque
+
+# Entrypoint: cria subdiretórios no volume com permissões corretas,
+# depois dropa de root → app antes de executar o binário.
+RUN printf '#!/bin/sh\nset -e\nmkdir -p /data/uploads /data/backups\nchown -R app:app /data\nexec su-exec app homeestoque "$@"\n' \
+    > /usr/local/bin/entrypoint.sh && chmod +x /usr/local/bin/entrypoint.sh
+
+# Dados persistentes montados aqui
+VOLUME ["/data"]
+
+ENV PORT=8080 \
+    DB_PATH=/data/homeestoque.db \
+    UPLOAD_DIR=/data/uploads \
+    BACKUP_DIR=/data/backups
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
+    CMD wget -q -O- http://localhost:8080/health || exit 1
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

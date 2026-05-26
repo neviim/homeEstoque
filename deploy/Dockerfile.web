@@ -1,0 +1,40 @@
+# syntax=docker/dockerfile:1
+# ─── Stage 1: fetch frontend build from GitHub Releases ───────────────────────
+FROM alpine:3.21 AS fetch
+
+ARG VERSION=latest
+
+RUN apk add --no-cache curl ca-certificates
+
+WORKDIR /dist
+
+# Resolve "latest" → real tag, then download the frontend tarball
+RUN set -eux; \
+    if [ "$VERSION" = "latest" ]; then \
+        TAG=$(curl -fsSL -o /dev/null -w '%{url_effective}' \
+              https://github.com/neviim/homeEstoque/releases/latest \
+              | sed 's|.*/tag/||'); \
+    else \
+        TAG="$VERSION"; \
+    fi; \
+    \
+    curl -fsSL -o frontend.tar.gz \
+        "https://github.com/neviim/homeEstoque/releases/download/${TAG}/homeestoque_frontend.tar.gz"; \
+    tar xzf frontend.tar.gz; \
+    ls -lh
+
+# ─── Stage 2: nginx serving the SPA ──────────────────────────────────────────
+FROM nginx:1.27-alpine
+
+# Remove default config
+RUN rm /etc/nginx/conf.d/default.conf
+
+COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy SPA build (tarball extracts to frontend/ directly)
+COPY --from=fetch /dist/frontend /usr/share/nginx/html
+
+EXPOSE 80
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -q -O/dev/null http://localhost:80/ || exit 1
