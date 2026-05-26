@@ -1,0 +1,71 @@
+version: 2
+
+before:
+  hooks:
+    - bash -c 'cd backend && go mod tidy'
+    - bash -c 'cd backend && go test ./...'
+    - bash -c 'cd frontend && npm ci'
+    - bash -c 'cd frontend && npm run build'
+
+builds:
+  - id: api
+    main: ./cmd/api
+    dir: backend
+    binary: homeestoque
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: api-archive
+    ids:
+      - api
+    name_template: "homeestoque_{{ .Os }}_{{ .Arch }}"
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    files:
+      - LICENSE
+      - README.md
+
+  - id: frontend
+    meta: true
+    name_template: "homeestoque_frontend"
+    formats: [tar.gz]
+    files:
+      - src: frontend/dist/**
+        dst: frontend
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+
+release:
+  github:
+    owner: neviim
+    name: homeEstoque

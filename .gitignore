@@ -1,6 +1,12 @@
 # ─── Binários compilados (gerados por build-mcp.sh) ─────────────
 bin/
 
+# ─── GoReleaser — diretório de output dos artefatos de release ───
+# IMPORTANTE: usar /dist/ com barra inicial para NÃO ignorar
+# subdiretórios como frontend/dist (já coberto por frontend/.gitignore)
+# nem qualquer eventual cmd/.../dist.
+/dist/
+
 # ─── Claude Code — config local da máquina (não compartilhar) ────
 .claude/settings.local.json
 
