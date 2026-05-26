@@ -29,7 +29,7 @@ free_port 8080
 free_port 5173
 
 echo "▶ Iniciando backend (Go) em :8080 com hot reload (Air)..."
-(cd backend && GOROOT=/home/neviim/go GOPATH=/home/neviim/go /home/neviim/go/bin/air) &
+(cd backend && air) &
 
 echo "▶ Iniciando frontend (Vite) em :5173..."
 (cd frontend && npm run dev) &

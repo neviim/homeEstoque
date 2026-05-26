@@ -49,7 +49,7 @@ export default defineConfig({
 
   webServer: [
     {
-      command: `GOROOT=/home/neviim/go GOPATH=/home/neviim/go GOMODCACHE=/home/neviim/go/pkg/mod /home/neviim/go/bin/go run ./cmd/api`,
+      command: `go run ./cmd/api`,
       cwd: BACKEND_DIR,
       env: {
         PORT: "8090",

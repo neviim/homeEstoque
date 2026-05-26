@@ -36,13 +36,10 @@ sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" "$ROOT/frontend/pa
 echo "▶ Compilando backend..."
 cd "$ROOT/backend"
 mkdir -p "$ROOT/bin"
-GOROOT=/home/neviim/go \
-GOPATH=/home/neviim/go \
-GOMODCACHE=/home/neviim/go/pkg/mod \
-  /home/neviim/go/bin/go build \
-    -ldflags "-X main.version=${VERSION}" \
-    -o "$ROOT/bin/api" \
-    ./cmd/api
+go build \
+  -ldflags "-X main.version=${VERSION}" \
+  -o "$ROOT/bin/api" \
+  ./cmd/api
 cd "$ROOT"
 
 # ── 4. Compila MCP ───────────────────────────────────────────────────────────

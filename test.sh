@@ -51,17 +51,19 @@ for arg in "$@"; do
 done
 
 # ─── Pré-requisitos ─────────────────────────────────────────────────────
-GO_BIN="/home/neviim/go/bin/go"
-NODE_BIN="/home/neviim/.nvm/versions/node/v24.13.0/bin/node"
-NPM_BIN="/home/neviim/.nvm/versions/node/v24.13.0/bin/npm"
-NPX_BIN="/home/neviim/.nvm/versions/node/v24.13.0/bin/npx"
+# Confiam no PATH: 'go' vem do mise (ver mise.toml); 'npm'/'npx' vem do
+# Node instalado (nvm, asdf, mise, sistema — tanto faz).
+GO_BIN="go"
+NODE_BIN="node"
+NPM_BIN="npm"
+NPX_BIN="npx"
 
-if [[ "$TARGET" =~ ^(all|backend|e2e)$ ]] && [[ ! -x "$GO_BIN" ]]; then
-  echo "${RED}go não encontrado em $GO_BIN${RESET}" >&2
+if [[ "$TARGET" =~ ^(all|backend|e2e)$ ]] && ! command -v "$GO_BIN" >/dev/null 2>&1; then
+  echo "${RED}go não encontrado no PATH (ative o mise ou instale Go)${RESET}" >&2
   exit 3
 fi
-if [[ "$TARGET" =~ ^(all|frontend|e2e)$ ]] && [[ ! -x "$NPM_BIN" ]]; then
-  echo "${RED}npm não encontrado em $NPM_BIN${RESET}" >&2
+if [[ "$TARGET" =~ ^(all|frontend|e2e)$ ]] && ! command -v "$NPM_BIN" >/dev/null 2>&1; then
+  echo "${RED}npm não encontrado no PATH${RESET}" >&2
   exit 3
 fi
 
@@ -158,13 +160,12 @@ run_backend() {
   if [[ $COVERAGE -eq 1 ]]; then
     args+=(-coverprofile=coverage.out)
   fi
-  GOROOT=/home/neviim/go GOPATH=/home/neviim/go GOMODCACHE=/home/neviim/go/pkg/mod \
-    "$GO_BIN" test "${args[@]}" ./...
+  "$GO_BIN" test "${args[@]}" ./...
   local rc=$?
   if [[ $COVERAGE -eq 1 && $rc -eq 0 ]]; then
     echo
     echo "${YELLOW}Cobertura backend:${RESET}"
-    GOROOT=/home/neviim/go "$GO_BIN" tool cover -func=coverage.out | tail -1
+    "$GO_BIN" tool cover -func=coverage.out | tail -1
     echo "Relatório HTML: backend/coverage.out (rode 'go tool cover -html=coverage.out')"
   fi
   return $rc
