@@ -2,14 +2,29 @@
 
 ## Pré-requisitos
 
-| Ferramenta | Versão mínima | Localização |
-|------------|---------------|-------------|
-| Go | 1.25.0 | `/home/neviim/go/bin/go` |
-| Node.js | 18+ | `node` |
-| npm | 9+ | `npm` |
-| Air (hot reload) | qualquer | instalado via `go install` |
+| Ferramenta | Versão | Como instalar |
+|------------|--------|---------------|
+| **Go** | 1.25.0 (fixado via `mise.toml`) | `curl https://mise.run \| sh` → `mise install` na raiz do projeto |
+| **Node.js** | 20+ | via nvm, mise ou empacotamento da distro |
+| **npm** | 9+ | vem junto com Node.js |
+| **Air** | qualquer | `go install github.com/air-verse/air@latest` |
 
-> **Atenção**: o binário `go` **não está no PATH** do sistema. Todos os comandos Go devem usar o caminho completo ou as variáveis de ambiente `GOROOT`/`GOPATH`.
+### Instalar mise (gerenciador de versão Go)
+
+```bash
+# 1. Instalar mise
+curl https://mise.run | sh
+echo 'eval "$(~/.local/bin/mise activate bash)"' >> ~/.bashrc  # ou ~/.zshrc
+source ~/.bashrc
+
+# 2. Na raiz do projeto, baixar o Go 1.25.0 configurado em mise.toml
+cd homeEstoque
+mise install
+```
+
+A partir daí, ao entrar no diretório do projeto o `go` correto já está disponível no PATH — nenhum caminho absoluto necessário.
+
+---
 
 ## Configuração inicial
 
@@ -29,6 +44,8 @@ CORS_ORIGINS=http://localhost:5173
 cd frontend && npm install
 ```
 
+---
+
 ## Subir ambiente de desenvolvimento
 
 ```bash
@@ -45,16 +62,17 @@ O script usa `Air` para o backend (recompila ao salvar qualquer `.go`) e `Vite` 
 
 Acesse `http://localhost:5173` e faça login com a conta criada via seed ou registro.
 
+---
+
 ## Compilar apenas o backend (sem hot reload)
 
 ```bash
 cd backend
-GOROOT=/home/neviim/go \
-GOPATH=/home/neviim/go \
-GOMODCACHE=/home/neviim/go/pkg/mod \
-  /home/neviim/go/bin/go build -o bin/api ./cmd/api
+go build -o bin/api ./cmd/api
 ./bin/api
 ```
+
+---
 
 ## Compilar o servidor MCP
 
@@ -63,7 +81,7 @@ GOMODCACHE=/home/neviim/go/pkg/mod \
 # Gera: bin/homeestoque-mcp
 ```
 
-O script configura automaticamente `GOROOT`, `GOPATH` e `GOMODCACHE`.
+---
 
 ## Dados de demonstração
 
@@ -77,6 +95,8 @@ O script configura automaticamente `GOROOT`, `GOPATH` e `GOMODCACHE`.
 
 Os dados demo têm prefixo `[D]` em categorias/localizações e `[DEMO]` no campo `notes` dos itens — o `--delete` usa isso para identificá-los com segurança.
 
+---
+
 ## Verificar saúde da API
 
 ```bash
@@ -84,17 +104,7 @@ curl http://localhost:8080/health
 # {"status":"ok","service":"homeestoque-api"}
 ```
 
-## Configuração do Air (hot reload)
-
-`backend/.air.toml` — relevante apenas ao desenvolvimento:
-
-```toml
-[build]
-  cmd = "GOROOT=/home/neviim/go GOPATH=/home/neviim/go /home/neviim/go/bin/go build -o ./tmp/main ./cmd/api"
-  bin = "./tmp/main"
-  include_ext = ["go"]
-  exclude_dir = ["tmp", "data", "uploads"]
-```
+---
 
 ## Proxy Vite → API
 
@@ -111,6 +121,8 @@ server: {
 
 Isso permite que o frontend faça `fetch('/api/items')` sem CORS durante o desenvolvimento.
 
+---
+
 ## Variáveis de ambiente
 
 | Variável | Default | Descrição |
@@ -121,18 +133,39 @@ Isso permite que o frontend faça `fetch('/api/items')` sem CORS durante o desen
 | `UPLOAD_DIR` | `./uploads` | Diretório para fotos dos itens |
 | `CORS_ORIGINS` | `http://localhost:5173` | Origens permitidas (separadas por vírgula) |
 
+---
+
 ## Adicionar dependência Go
 
 ```bash
 cd backend
-GOROOT=/home/neviim/go \
-GOPATH=/home/neviim/go \
-GOMODCACHE=/home/neviim/go/pkg/mod \
-  /home/neviim/go/bin/go get github.com/exemplo/pacote@v1.0.0
-
-# Limpar e atualizar go.sum
-GOROOT=/home/neviim/go \
-GOPATH=/home/neviim/go \
-GOMODCACHE=/home/neviim/go/pkg/mod \
-  /home/neviim/go/bin/go mod tidy
+go get github.com/exemplo/pacote@v1.0.0
+go mod tidy
 ```
+
+---
+
+## Build de produção
+
+```bash
+# Na raiz do projeto
+./build.sh              # bump patch (0.1.0 → 0.1.1) + compila tudo
+./build.sh --minor      # bump minor (0.1.0 → 0.2.0)
+./build.sh --major      # bump major (0.1.0 → 1.0.0)
+```
+
+Gera:
+- `bin/api` — backend HTTP
+- `bin/homeestoque-mcp` — servidor MCP
+- `frontend/dist/` — SPA buildada
+
+---
+
+## Release automático
+
+```bash
+git tag -a v0.2.0 -m "Release v0.2.0"
+git push origin v0.2.0
+```
+
+O workflow `.github/workflows/release.yml` roda testes, compila multi-plataforma (Linux/macOS/Windows) e publica em GitHub Releases em ~3 minutos. Veja [../README.md](../README.md) para a lista de artefatos.

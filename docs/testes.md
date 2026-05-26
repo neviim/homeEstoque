@@ -1,6 +1,6 @@
 # Testes
 
-O HomeEstoque tem **~350 testes/cenários automatizados** cobrindo backend Go, frontend React e fluxos E2E. Esta página explica como rodar, onde estão organizados e o que cada camada cobre.
+O HomeEstoque tem **304 testes/cenários automatizados** cobrindo backend Go, frontend React e fluxos E2E (194 Go + 98 Vitest + 12 E2E). Esta página explica como rodar, onde estão organizados e o que cada camada cobre.
 
 ## Como rodar
 
@@ -39,7 +39,7 @@ Exemplos combinados:
 - `0` — todas as camadas executadas passaram.
 - `1` — pelo menos uma camada falhou. **As camadas seguintes continuam rodando** mesmo após uma falha, pra você ver tudo de uma vez.
 - `2` — argumento desconhecido.
-- `3` — pré-requisito ausente (`go` em `/home/neviim/go/bin/go` ou `npm` em `/home/neviim/.nvm/versions/node/v24.13.0/bin/npm`).
+- `3` — pré-requisito ausente (`go` não encontrado no PATH — instale via mise; ou `npm` ausente).
 
 #### Auto-install (idempotente)
 
@@ -59,13 +59,13 @@ Exemplo de output com `./test.sh --fast --quiet`:
 ```
 HomeEstoque — suíte de testes
 Modo: all +fast +quiet
-  Backend Go ... ✓  ~230 testes
-  Frontend Vitest ... ✓  92 testes
+  Backend Go ... ✓  194 testes
+  Frontend Vitest ... ✓  98 testes
 
 ━━━ Resumo ━━━
-  Backend Go                PASS   ~230 testes  (2s)
-  Frontend Vitest           PASS    92 testes  (30s)
-  Total: ~322 testes
+  Backend Go                PASS   194 testes  (2s)
+  Frontend Vitest           PASS    98 testes  (30s)
+  Total: 292 testes
 
 Todos os testes passaram ✓
 ```
@@ -75,13 +75,14 @@ Todos os testes passaram ✓
 #### Backend (Go)
 ```bash
 cd backend
-GOROOT=/home/neviim/go GOPATH=/home/neviim/go /home/neviim/go/bin/go test -race ./...
+go test -race ./...
 
 # Com cobertura
-GOROOT=/home/neviim/go GOPATH=/home/neviim/go /home/neviim/go/bin/go test \
-  -race -coverprofile=coverage.out ./...
-GOROOT=/home/neviim/go /home/neviim/go/bin/go tool cover -html=coverage.out
+go test -race -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
 ```
+
+> O `go` precisa estar no PATH. Na raiz do projeto, o mise ativa automaticamente o Go 1.25.0 configurado em `mise.toml`. Consulte [desenvolvimento.md](desenvolvimento.md) para detalhes.
 
 #### Frontend (Vitest)
 ```bash
@@ -104,7 +105,7 @@ npm run test:ui         # UI mode (debugger interativo)
 #### Tudo de uma vez (replica o CI)
 ```bash
 # Backend
-cd backend && GOROOT=/home/neviim/go GOPATH=/home/neviim/go /home/neviim/go/bin/go test -race ./...
+cd backend && go test -race ./...
 
 # Frontend
 cd frontend && npm test
@@ -163,7 +164,7 @@ homeEstoque/
 
 ## Cobertura por camada
 
-### Backend Go — ~230 testes
+### Backend Go — 194 testes
 
 | Pacote | Testes | Cobertura |
 |--------|--------|-----------|
@@ -184,7 +185,7 @@ homeEstoque/
 
 **Cobertura média do backend: 78%**
 
-### Frontend — 92 testes
+### Frontend — 98 testes
 
 | Arquivo | Testes | Cobertura |
 |---------|--------|-----------|
