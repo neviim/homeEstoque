@@ -376,7 +376,8 @@ func TestItems_UploadPhoto_InvalidExtension_Returns400(t *testing.T) {
 	req, _ := http.NewRequest("POST", srv.URL+itemPath(itemID, "/photos"), body)
 	req.Header.Set("Authorization", "Bearer "+admin.Token)
 	req.Header.Set("Content-Type", w.FormDataContentType())
-	resp, _ := srv.Client().Do(req)
+	resp, err := srv.Client().Do(req)
+	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
