@@ -1,7 +1,7 @@
 // E2E — fluxos de autenticação.
 
 import { test, expect } from "@playwright/test";
-import { loginAsAdmin, loginUI, apiLoginAdmin, apiPost } from "./helpers/auth";
+import { loginAsAdmin, loginUI, logoutUI, apiLoginAdmin, apiPost } from "./helpers/auth";
 import { fullCleanup } from "./helpers/cleanup";
 
 test.afterEach(async () => {
@@ -48,8 +48,7 @@ test("admin aprova pending e user consegue logar", async ({ page }) => {
   await expect(page.getByRole("button", { name: /pendentes/i })).toBeVisible();
 
   // Logout
-  await page.getByRole("button", { name: "Sair" }).click();
-  await expect(page).toHaveURL(/\/login/);
+  await logoutUI(page);
 
   // Pen agora consegue logar
   await loginUI(page, "pen@e2e.test", "pen-senha-123");
@@ -78,12 +77,8 @@ test("troca de senha pelo ProfileModal e relogin", async ({ page }) => {
   // Toast de sucesso (usa .first() porque toasts duplicam visualmente)
   await expect(page.getByText(/senha alterada/i).first()).toBeVisible({ timeout: 5_000 });
 
-  // Fecha o modal (botão X)
-  await page.keyboard.press("Escape");
-
-  // Logout
-  await page.getByRole("button", { name: "Sair" }).click();
-  await expect(page).toHaveURL(/\/login/);
+  // Logout (a opção "Sair" agora vive dentro do ProfileModal, já aberto)
+  await logoutUI(page);
 
   // Login com a nova senha
   await loginUI(page, "beto@e2e.test", "senha-nova-456");

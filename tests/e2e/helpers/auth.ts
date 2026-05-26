@@ -22,6 +22,16 @@ export async function loginAsAdmin(page: Page) {
   await loginUI(page, E2E_ADMIN.email, E2E_ADMIN.password);
 }
 
+/** Faz logout via UI: abre o ProfileModal (se necessário) e clica em "Sair do sistema". */
+export async function logoutUI(page: Page) {
+  const sair = page.getByRole("button", { name: /sair do sistema/i });
+  if (!(await sair.isVisible().catch(() => false))) {
+    await page.locator('button[title="Ver perfil"]').click();
+  }
+  await sair.click();
+  await page.waitForURL(/\/login/, { timeout: 10_000 });
+}
+
 /** Faz login via API e devolve o token (útil pra setup rápido sem UI). */
 export async function apiLogin(email: string, password: string): Promise<string> {
   const r = await fetch(`${API}/auth/login`, {

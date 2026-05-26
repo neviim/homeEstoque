@@ -6,7 +6,7 @@
 //    do user afetado (sem precisar relogar)
 
 import { test, expect } from "@playwright/test";
-import { loginAsAdmin, apiLoginAdmin, apiPost, apiPut, apiGet } from "./helpers/auth";
+import { loginAsAdmin, logoutUI, apiLoginAdmin, apiPost, apiPut, apiGet } from "./helpers/auth";
 import { fullCleanup } from "./helpers/cleanup";
 
 test.beforeEach(async () => {
@@ -70,7 +70,7 @@ test("admin cria perfil customizado, define permissões, atribui a usuário", as
   });
 
   // Loga como ele e verifica que só Dashboard e Itens aparecem no menu
-  await page.getByRole("button", { name: "Sair" }).click();
+  await logoutUI(page);
   await page.locator('input[type="email"]').fill("audit@e2e.test");
   await page.locator('input[type="password"]').fill("audit-senha-123");
   await page.locator('button[type="submit"]').click();
