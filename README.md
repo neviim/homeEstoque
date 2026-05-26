@@ -23,10 +23,11 @@ Sistema completo de **controle de estoque doméstico** com backend em Go e front
 
 | Camada   | Tecnologia |
 |----------|-----------|
-| Backend  | Go 1.22+, chi router, SQLite (modernc puro Go) |
+| Backend  | Go 1.25 (gerenciado via [mise](https://mise.jdx.dev/)), chi router, SQLite (modernc puro Go) |
 | Auth     | JWT + bcrypt |
 | Frontend | React 18, Vite, TypeScript, TailwindCSS, TanStack Query, React Router |
 | Outros   | go-qrcode, react-hot-toast, lucide-react |
+| Release  | GoReleaser → binários Linux/macOS/Windows publicados automaticamente em GitHub Releases ao empurrar tag `vX.Y.Z` |
 
 A comunicação é **100% via API REST** — backend e frontend podem rodar/serem deployados de forma independente.
 
@@ -63,25 +64,60 @@ homeEstoque/
     └── package.json
 ```
 
+## Pré-requisitos
+
+- **Node.js 20+** com `npm`.
+- **Go 1.25** — instale via [mise](https://mise.jdx.dev/) (o projeto fixa a versão em `mise.toml` e o shell ativa automaticamente ao entrar no diretório):
+
+  ```bash
+  curl https://mise.run | sh
+  echo 'eval "$(~/.local/bin/mise activate bash)"' >> ~/.bashrc   # ou ~/.zshrc
+  ```
+
+  Depois, na primeira vez no projeto: `mise install` (baixa Go 1.25 isoladamente — não interfere em outros projetos com versões diferentes de Go).
+
 ## Como rodar
 
-### 1. Backend (porta 8080)
+### Opção A — Binários pré-compilados (mais rápido)
+
+Cada tag `vX.Y.Z` publica binários em GitHub Releases. Pegue o último direto, sem clonar nem compilar:
 
 ```bash
-cd backend
-cp .env.example .env             # opcional - ajuste JWT_SECRET em produção
-go mod tidy
-go run ./cmd/api
+# Backend (escolha sua plataforma; URLs com /latest/ apontam sempre para a versão atual)
+curl -L -o homeestoque.tar.gz \
+  https://github.com/neviim/homeEstoque/releases/latest/download/homeestoque_linux_amd64.tar.gz
+tar xzf homeestoque.tar.gz
+./homeestoque                      # sobe API em :8080
+
+# Frontend (SPA estática)
+curl -L -o frontend.tar.gz \
+  https://github.com/neviim/homeEstoque/releases/latest/download/homeestoque_frontend.tar.gz
+tar xzf frontend.tar.gz            # extrai ./frontend/ com a build pronta
 ```
 
-O servidor cria automaticamente:
-- `./data/homeestoque.db` (SQLite)
-- `./uploads/` (fotos)
-- Categorias e locais iniciais
+Sirva o `frontend/` com nginx/Caddy fazendo proxy de `/api` → backend `:8080`.
 
-### 2. Frontend (porta 5173)
+Assets disponíveis (sem versão no nome, URLs estáveis):
+- `homeestoque_linux_amd64.tar.gz` · `homeestoque_linux_arm64.tar.gz`
+- `homeestoque_darwin_amd64.tar.gz` · `homeestoque_darwin_arm64.tar.gz`
+- `homeestoque_windows_amd64.zip`
+- `homeestoque_frontend.tar.gz`
+- `checksums.txt` (SHA-256 dos arquivos acima)
+
+### Opção B — Rodar do código (desenvolvimento)
 
 ```bash
+git clone https://github.com/neviim/homeEstoque
+cd homeEstoque
+mise install                       # baixa o Go 1.25 conforme mise.toml
+
+# Backend (porta 8080)
+cd backend
+cp .env.example .env               # opcional — ajuste JWT_SECRET em produção
+go mod tidy
+go run ./cmd/api
+
+# Frontend (porta 5173) — em outro terminal
 cd frontend
 npm install
 npm run dev
@@ -89,19 +125,48 @@ npm run dev
 
 Abra http://localhost:5173 — crie sua conta na tela inicial (botão **Criar conta**).
 
-> O Vite já está configurado com proxy `/api` → `localhost:8080`, então não precisa configurar CORS para desenvolvimento.
+> O Vite já vem com proxy `/api` → `localhost:8080`, sem precisar de CORS pra dev.
 
-### Build de produção
+O backend cria automaticamente:
+- `./data/homeestoque.db` (SQLite)
+- `./uploads/` (fotos)
+- Categorias e locais iniciais
+
+#### Atalho: subir tudo em um terminal
 
 ```bash
-# Frontend (gera /frontend/dist)
-cd frontend && npm run build
-
-# Backend
-cd backend && go build -o bin/api ./cmd/api
+./start-dev.sh                     # backend com hot-reload (Air) + frontend
 ```
 
-Você pode servir o `dist/` por qualquer estático (nginx, Caddy) ou apontar o backend para servi-lo.
+### Build de produção (local)
+
+```bash
+./build.sh                         # bump patch + compila tudo
+# Gera:
+#   bin/api                        backend HTTP
+#   bin/homeestoque-mcp            servidor MCP
+#   frontend/dist/                 SPA build
+
+./build.sh --minor                 # bump X.(Y+1).0
+./build.sh --major                 # bump (X+1).0.0
+```
+
+### Disparar um release automático
+
+Empurre uma tag — o workflow `.github/workflows/release.yml` roda os testes, compila multi-plataforma e publica em GitHub Releases:
+
+```bash
+git tag -a v0.1.2 -m "Release v0.1.2"
+git push origin v0.1.2
+```
+
+Em ~3 minutos, os artefatos da Opção A ficam disponíveis na nova tag.
+
+### Resetar a senha de um usuário (admin local)
+
+```bash
+./tools/reset-password.sh <email> <nova-senha>
+```
 
 ## Servidor MCP (Claude Code / Claude Desktop)
 
